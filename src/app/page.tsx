@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { SignInButton, SignUpButton, useUser } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
+import { Mascot } from "@/components/Mascot";
 
 export default function LandingPage() {
   const { isSignedIn, isLoaded } = useUser();
@@ -18,7 +19,7 @@ export default function LandingPage() {
       <header className="flex justify-between items-center px-6 py-4">
         <div className="flex items-center gap-2 text-2xl font-bold text-purple-700">
           <span>✏️</span>
-          <span>Dicteo</span>
+          <span>Dictou</span>
         </div>
         <div className="flex gap-3">
           <SignInButton mode="modal">
@@ -42,7 +43,9 @@ export default function LandingPage() {
           transition={{ duration: 0.6 }}
           className="max-w-2xl"
         >
-          <div className="text-8xl mb-6">✏️</div>
+          <div className="flex justify-center mb-4">
+            <Mascot size={140} mood="happy" />
+          </div>
           <h1 className="text-5xl font-bold text-gray-900 mb-4 leading-tight">
             Apprends la dictée{" "}
             <span className="text-purple-600">en t'amusant !</span>

@@ -5,127 +5,121 @@ const client = new Anthropic({
 });
 
 interface GenerateSentenceParams {
-  targetWords: string[];    // mots prioritaires à inclure obligatoirement
-  optionalWords?: string[]; // autres mots de la liste si besoin
-  level?: "cp" | "ce1" | "ce2" | "cm1" | "cm2"; // niveau scolaire
+  targetWords: string[];
+  optionalWords?: string[];
+  level?: "cp" | "ce1" | "ce2" | "cm1" | "cm2";
 }
 
 interface GeneratedSentence {
   text: string;
-  wordsUsed: string[]; // mots de la liste effectivement utilisés dans la phrase
 }
+
+const LEVEL_GUIDES: Record<string, string> = {
+  cp:  "CP (6-7 ans) : 5 à 7 mots, sujet + verbe simple + complément. Ex: « Le chat boit du lait. »",
+  ce1: "CE1 (7-8 ans) : 7 à 10 mots, une seule idée claire. Ex: « La petite fille mange une pomme rouge. »",
+  ce2: "CE2 (8-9 ans) : 9 à 13 mots, peut avoir une relative simple. Ex: « Le chien court dans le jardin et saute par-dessus la barrière. »",
+  cm1: "CM1 (9-10 ans) : 11 à 15 mots, une proposition subordonnée simple. Ex: « Quand il fait beau, les enfants jouent au ballon dans la cour de l'école. »",
+  cm2: "CM2 (10-11 ans) : 12 à 18 mots, structure variée. Ex: « Malgré la pluie, les trois amis décidèrent de partir en randonnée dans la forêt. »",
+};
 
 export async function generateDictationSentence(
   params: GenerateSentenceParams
 ): Promise<GeneratedSentence> {
   const { targetWords, optionalWords = [], level = "ce1" } = params;
 
-  const levelDescriptions = {
-    cp: "CP (6-7 ans, phrases très courtes de 5-7 mots, vocabulaire ultra simple)",
-    ce1: "CE1 (7-8 ans, phrases courtes de 6-9 mots, vocabulaire simple)",
-    ce2: "CE2 (8-9 ans, phrases de 8-12 mots, vocabulaire courant)",
-    cm1: "CM1 (9-10 ans, phrases de 10-14 mots, vocabulaire varié)",
-    cm2: "CM2 (10-11 ans, phrases de 12-16 mots, vocabulaire riche)",
-  };
+  const levelGuide = LEVEL_GUIDES[level];
+  const targetList = targetWords.join(", ");
+  const optionalList = optionalWords.slice(0, 4).join(", ");
 
-  const allWords = [...targetWords, ...optionalWords.slice(0, 5)];
-  const wordList = targetWords.join(", ");
-  const optionalList =
-    optionalWords.length > 0 ? optionalWords.slice(0, 5).join(", ") : "aucun";
+  const systemPrompt = `Tu es un expert en pédagogie française qui crée des phrases de dictée pour enfants.
 
-  const prompt = `Tu génères des phrases de dictée pour des enfants en France, niveau ${levelDescriptions[level]}.
+RÈGLES ABSOLUES :
+1. La phrase doit être 100% grammaticalement correcte en français
+2. La phrase doit avoir un sens logique et concret qu'un enfant peut visualiser
+3. Chaque mot doit s'enchaîner naturellement avec le suivant
+4. Vérifie mentalement : sujet + verbe accordé + compléments cohérents
+5. Pas de constructions alambiquées, pas d'expressions figées mal utilisées
+6. Si un mot imposé est difficile à intégrer naturellement, construis la phrase autour de lui
 
-MOTS OBLIGATOIRES à inclure dans la phrase (tous doivent apparaître): ${wordList}
+EXEMPLES DE PHRASES INCORRECTES À ÉVITER :
+- "La grenouille du sien saute bien." ❌ (sien n'a pas de sens ici)
+- "Le beau chien rouge mange le vite." ❌ (adverbe mal placé)
+- "Marie court le jardin." ❌ (préposition manquante)
 
-MOTS OPTIONNELS de la liste (utilise-en si ça aide à construire une phrase naturelle): ${optionalList}
+EXEMPLES DE BONNES PHRASES :
+- "La grenouille verte saute sur le nénuphar." ✅
+- "Le petit garçon mange une pomme dans le jardin." ✅
+- "Chaque matin, Sophie prend son cartable et part à l'école." ✅`;
 
-RÈGLES STRICTES:
-1. La phrase doit avoir un sens logique et être amusante/imaginative pour un enfant
-2. Tous les mots obligatoires DOIVENT apparaître dans la phrase
-3. Utilise des mots simples pour le reste (mots hors liste = minimum)
-4. La phrase doit être en français correct avec une bonne orthographe
-5. Pas de contenu effrayant ou inapproprié
-6. Une seule phrase, terminée par un point.
+  const userPrompt = `Niveau : ${levelGuide}
 
-Réponds UNIQUEMENT avec un objet JSON dans ce format exact:
-{
-  "sentence": "La phrase ici.",
-  "wordsUsed": ["liste", "des", "mots", "de", "la liste", "utilisés"]
-}
+Mots OBLIGATOIRES à inclure (tous doivent apparaître) : ${targetList}
+${optionalList ? `Mots optionnels (utilise-en si ça aide) : ${optionalList}` : ""}
 
-Les "wordsUsed" doivent contenir uniquement les mots qui apparaissent dans la phrase ET qui faisaient partie de la liste fournie (obligatoires + optionnels).`;
+Génère UNE SEULE phrase de dictée qui :
+- Utilise tous les mots obligatoires
+- Est amusante ou imagée pour un enfant
+- Est parfaitement correcte grammaticalement
+- Termine par un point
+
+Réponds UNIQUEMENT avec ce JSON (rien d'autre) :
+{"sentence": "Ta phrase ici."}`;
 
   const response = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 300,
-    messages: [
-      {
-        role: "user",
-        content: prompt,
-      },
-    ],
+    max_tokens: 200,
+    system: systemPrompt,
+    messages: [{ role: "user", content: userPrompt }],
   });
 
   const content = response.content[0];
-  if (content.type !== "text") {
-    throw new Error("Réponse Claude inattendue");
-  }
+  if (content.type !== "text") throw new Error("Réponse Claude inattendue");
 
-  // Parse le JSON
-  const jsonMatch = content.text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error("Format de réponse invalide");
-  }
+  const jsonMatch = content.text.match(/\{[\s\S]*?\}/);
+  if (!jsonMatch) throw new Error("Format de réponse invalide");
 
   const parsed = JSON.parse(jsonMatch[0]);
+  const sentence: string = parsed.sentence;
 
   // Vérifie que tous les mots cibles sont présents
-  const sentenceLower = parsed.sentence.toLowerCase();
+  const sentenceLower = sentence.toLowerCase();
   const missingWords = targetWords.filter(
     (w) => !sentenceLower.includes(w.toLowerCase())
   );
 
   if (missingWords.length > 0) {
-    // Retry avec insistance
-    return generateDictationSentenceRetry(params, missingWords);
+    return retryWithMissingWords(targetWords, missingWords, level, levelGuide, systemPrompt);
   }
 
-  return {
-    text: parsed.sentence,
-    wordsUsed: parsed.wordsUsed || targetWords,
-  };
+  return { text: sentence };
 }
 
-async function generateDictationSentenceRetry(
-  params: GenerateSentenceParams,
-  missingWords: string[]
+async function retryWithMissingWords(
+  targetWords: string[],
+  missingWords: string[],
+  level: string,
+  levelGuide: string,
+  systemPrompt: string
 ): Promise<GeneratedSentence> {
-  const { targetWords, level = "ce1" } = params;
-
   const response = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 300,
-    messages: [
-      {
-        role: "user",
-        content: `Génère une phrase courte et amusante pour un enfant de niveau ${level} en français qui contient OBLIGATOIREMENT ces mots: ${targetWords.join(", ")}.
+    max_tokens: 200,
+    system: systemPrompt,
+    messages: [{
+      role: "user",
+      content: `Niveau : ${levelGuide}
 
-Ces mots manquaient: ${missingWords.join(", ")}. Ils DOIVENT être dans la phrase.
+Tu DOIS inclure ces mots : ${targetWords.join(", ")}
+Ces mots étaient manquants : ${missingWords.join(", ")} — ils DOIVENT être dans la phrase.
 
-Réponds avec un JSON: {"sentence": "...", "wordsUsed": [...]}`,
-      },
-    ],
+Génère une phrase courte, correcte et amusante pour un enfant.
+Réponds UNIQUEMENT avec : {"sentence": "Ta phrase ici."}`,
+    }],
   });
 
   const content = response.content[0];
   if (content.type !== "text") throw new Error("Erreur Claude");
-
-  const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+  const jsonMatch = content.text.match(/\{[\s\S]*?\}/);
   if (!jsonMatch) throw new Error("Format invalide");
-
-  const parsed = JSON.parse(jsonMatch[0]);
-  return {
-    text: parsed.sentence,
-    wordsUsed: parsed.wordsUsed || targetWords,
-  };
+  return { text: JSON.parse(jsonMatch[0]).sentence };
 }

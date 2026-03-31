@@ -18,7 +18,7 @@ export default async function DashboardLayout({
         <div className="max-w-5xl mx-auto px-4 flex items-center justify-between h-14">
           <Link href="/dashboard" className="flex items-center gap-2 font-bold text-xl text-purple-700">
             <span>✏️</span>
-            <span>Dicteo</span>
+            <span>Dictou</span>
           </Link>
           <nav className="flex items-center gap-1">
             <Link

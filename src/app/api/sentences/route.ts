@@ -3,8 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { selectPriorityWords } from "@/lib/scoring";
 import { generateDictationSentence } from "@/lib/claude";
+import { extractSignificantWords } from "@/lib/stopwords";
 
-// POST /api/sentences — génère une nouvelle phrase
+// POST /api/sentences — génère une nouvelle phrase et enregistre tous ses mots
 export async function POST(req: NextRequest) {
   const { userId: clerkId } = await auth();
   if (!clerkId) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
@@ -22,16 +23,13 @@ export async function POST(req: NextRequest) {
   const user = await prisma.user.findUnique({ where: { clerkId } });
   if (!user) return NextResponse.json({ error: "Utilisateur non trouvé" }, { status: 404 });
 
-  // Vérifie que la session appartient à cet utilisateur
   const session = await prisma.session.findFirst({
     where: { id: sessionId, userId: user.id },
   });
   if (!session) return NextResponse.json({ error: "Session non trouvée" }, { status: 404 });
 
-  // Récupère les mots disponibles
-  const allWords = await prisma.word.findMany({
-    where: { userId: user.id },
-  });
+  // Récupère les mots existants
+  const allWords = await prisma.word.findMany({ where: { userId: user.id } });
 
   if (allWords.length === 0) {
     return NextResponse.json(
@@ -40,12 +38,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Sélectionne les mots prioritaires (2-3 mots cibles par phrase)
-  const wordCount = Math.min(allWords.length, allWords.length >= 3 ? 3 : allWords.length);
+  // Sélectionne les mots prioritaires pour guider la génération (2-3 mots)
+  const wordCount = Math.min(allWords.length, 3);
   const priorityWords = selectPriorityWords(allWords, wordCount);
   const optionalWords = allWords
     .filter((w) => !priorityWords.find((p) => p.id === w.id))
-    .slice(0, 5);
+    .slice(0, 4);
 
   // Génère la phrase avec Claude
   const generated = await generateDictationSentence({
@@ -54,44 +52,58 @@ export async function POST(req: NextRequest) {
     level: level || "ce1",
   });
 
-  // Sauvegarde la phrase en base
+  // ─── Extraire TOUS les mots significatifs de la phrase ───
+  const allSentenceWords = extractSignificantWords(generated.text);
+
+  // Upsert tous les mots dans la liste de l'utilisateur (nouveaux = level 0)
+  const wordRecords = await Promise.all(
+    allSentenceWords.map((text) =>
+      prisma.word.upsert({
+        where: { userId_text: { userId: user.id, text } },
+        update: { lastSeenAt: new Date(), timesSeenInSentence: { increment: 1 } },
+        create: {
+          userId: user.id,
+          text,
+          level: 0,
+          priorityScore: 100,
+          lastSeenAt: new Date(),
+          timesSeenInSentence: 1,
+        },
+      })
+    )
+  );
+
+  // Crée la phrase et lie TOUS ses mots
   const sentence = await prisma.sentence.create({
     data: {
       sessionId,
       text: generated.text,
       sentenceWords: {
-        create: priorityWords.map((word) => ({
-          wordId: word.id,
-        })),
+        create: wordRecords.map((word) => ({ wordId: word.id })),
       },
     },
     include: {
-      sentenceWords: {
-        include: { word: true },
-      },
+      sentenceWords: { include: { word: true } },
     },
   });
 
-  // Met à jour lastSeenAt pour les mots utilisés
-  await prisma.word.updateMany({
-    where: { id: { in: priorityWords.map((w) => w.id) } },
-    data: { lastSeenAt: new Date(), timesSeenInSentence: { increment: 1 } },
-  });
-
-  // Incrémente le compteur de phrases de la session
   await prisma.session.update({
     where: { id: sessionId },
     data: { totalSentences: { increment: 1 } },
   });
 
+  // Identifie les mots "cibles" (ceux qui étaient prioritaires avant la phrase)
+  const priorityWordIds = new Set(priorityWords.map((w) => w.id));
+
   return NextResponse.json({
     sentence: {
       id: sentence.id,
       text: sentence.text,
-      targetWords: sentence.sentenceWords.map((sw) => ({
+      allWords: sentence.sentenceWords.map((sw) => ({
         id: sw.wordId,
         text: sw.word.text,
         level: sw.word.level,
+        isTarget: priorityWordIds.has(sw.wordId),
       })),
     },
   });

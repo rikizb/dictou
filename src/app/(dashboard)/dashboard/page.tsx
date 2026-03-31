@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useUser } from "@clerk/nextjs";
+import { Mascot } from "@/components/Mascot";
 
 interface Stats {
   totalWords: number;
@@ -48,7 +49,7 @@ export default function DashboardPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-purple-600 to-blue-500 rounded-3xl p-8 text-white shadow-lg"
+        className="relative bg-gradient-to-r from-purple-600 to-blue-500 rounded-3xl p-8 text-white shadow-lg overflow-hidden"
       >
         <p className="text-purple-200 text-lg">
           {greeting()},{" "}
@@ -64,6 +65,9 @@ export default function DashboardPage() {
         <p className="text-purple-200 mt-2">
           {stats?.totalXp || 0} ⭐ XP total
         </p>
+        <div className="absolute right-6 bottom-0 opacity-90 pointer-events-none">
+          <Mascot size={100} mood={stats?.streak.current && stats.streak.current >= 3 ? "excited" : "happy"} />
+        </div>
         <Link
           href="/practice"
           className="inline-block mt-4 px-6 py-3 bg-white text-purple-700 font-bold rounded-xl hover:scale-105 transition shadow"
