@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Un utilisateur = un enfant (ou parent gérant plusieurs enfants)
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  name      String?
+  avatar    String?  // emoji avatar choisi
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  words    Word[]
+  sessions Session[]
+  streaks  Streak[]
+}
+
+// Un mot à apprendre
+model Word {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  text      String   // le mot lui-même
+
+  // Niveau de maîtrise (spaced repetition simplifié)
+  level     Int      @default(0) // 0=nouveau, 1=apprentissage, 2=connu, 3=maîtrisé
+
+  // Statistiques
+  timesSeenInSentence  Int @default(0)
+  timesCorrect         Int @default(0)
+  timesWrong           Int @default(0)
+
+  // Pour la priorisation
+  addedAt   DateTime @default(now())
+  lastSeenAt DateTime?
+  nextReviewAt DateTime? // spaced repetition
+
+  // Priorité calculée (mise à jour après chaque session)
+  priorityScore Float @default(100)
+
+  sentenceWords SentenceWord[]
+
+  @@unique([userId, text])
+}
+
+// Une session de dictée
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+
+  // Score de la session
+  totalSentences Int @default(0)
+  totalWords     Int @default(0)
+  correctWords   Int @default(0)
+  xpEarned       Int @default(0)
+
+  sentences Sentence[]
+}
+
+// Une phrase générée
+model Sentence {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  text      String   // le texte complet de la phrase
+
+  // Résultats
+  completedAt DateTime?
+  score       Int?     // % de mots corrects
+
+  sentenceWords SentenceWord[]
+}
+
+// Relation entre une phrase et les mots de la liste qu'elle contient
+model SentenceWord {
+  id         String   @id @default(cuid())
+  sentenceId String
+  sentence   Sentence @relation(fields: [sentenceId], references: [id], onDelete: Cascade)
+  wordId     String
+  word       Word     @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  // Résultat pour ce mot dans cette phrase
+  wasCorrect Boolean?  // null = pas encore évalué
+
+  @@unique([sentenceId, wordId])
+}
+
+// Streak (séries de jours consécutifs)
+model Streak {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  current   Int      @default(0)  // streak actuel en jours
+  best      Int      @default(0)  // meilleur streak
+  lastActiveAt DateTime?
+
+  @@unique([userId])
+}

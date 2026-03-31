@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --app --src-dir --import-alias \"@/*\" --no-git --yes)",
+      "Read(//usr/local/bin/**)",
+      "Read(//opt/homebrew/bin/**)",
+      "Bash(export PATH=$PATH:/opt/homebrew/bin:/usr/local/bin)",
+      "Bash(command -v node)",
+      "Read(//Applications/**)",
+      "Bash(BASE=\"/Users/elisalafaye/Library/CloudStorage/GoogleDrive-aymeric@yatori.fr/Drive partagés/PERSO Bérenger/IA_OS/Dicteo\")",
+      "Bash(mkdir -p \"$BASE/src/app/\\(auth\\)/sign-in/[[...sign-in]]\")",
+      "Bash(mkdir -p \"$BASE/src/app/\\(auth\\)/sign-up/[[...sign-up]]\")",
+      "Bash(mkdir -p \"$BASE/src/app/\\(dashboard\\)\")",
+      "Bash(mkdir -p \"$BASE/src/app/api/words\")"
+    ]
+  }
+}
