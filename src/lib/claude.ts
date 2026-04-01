@@ -69,7 +69,7 @@ Réponds UNIQUEMENT avec ce JSON (rien d'autre) :
 {"sentence": "Ta phrase ici."}`;
 
   const response = await client.messages.create({
-    model: "claude-sonnet-4-5-20251001",
+    model: "claude-sonnet-4-5",
     max_tokens: 200,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
@@ -105,7 +105,7 @@ async function retryWithMissingWords(
   systemPrompt: string
 ): Promise<GeneratedSentence> {
   const response = await client.messages.create({
-    model: "claude-sonnet-4-5-20251001",
+    model: "claude-sonnet-4-5",
     max_tokens: 200,
     system: systemPrompt,
     messages: [{
