@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
           userId: user.id,
           text,
           level: 0,
+          source: "CAPTURED",
           priorityScore: 100,
           lastSeenAt: new Date(),
           timesSeenInSentence: 1,

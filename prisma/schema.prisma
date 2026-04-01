@@ -7,6 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum WordSource {
+  MANUAL    // saisi par le parent dans l'interface
+  CAPTURED  // détecté automatiquement pendant une dictée
+}
+
 // Un utilisateur = un enfant (ou parent gérant plusieurs enfants)
 model User {
   id        String   @id @default(cuid())
@@ -16,9 +21,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  words    Word[]
-  sessions Session[]
-  streaks  Streak[]
+  words     Word[]
+  sessions  Session[]
+  streaks   Streak[]
+  wordLists WordList[]
 }
 
 // Un mot à apprendre
@@ -31,6 +37,9 @@ model Word {
 
   // Niveau de maîtrise (spaced repetition simplifié)
   level     Int      @default(0) // 0=nouveau, 1=apprentissage, 2=connu, 3=maîtrisé
+
+  // Origine du mot
+  source    WordSource @default(MANUAL)
 
   // Statistiques
   timesSeenInSentence  Int @default(0)
@@ -48,6 +57,39 @@ model Word {
   sentenceWords SentenceWord[]
 
   @@unique([userId, text])
+}
+
+// Liste de mots nommée (collaborative / partageable)
+model WordList {
+  id        String   @id @default(cuid())
+  slug      String   @unique  // ex: "mots-ce2-difficiles-a3f7"
+  name      String            // ex: "Mots CE2 difficiles"
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  isPublic   Boolean @default(true)   // false = liste privée (hors scope MVP)
+  isArchived Boolean @default(false)  // liste archivée = masquée par défaut
+
+  copyCount Int      @default(0)      // compteur de copies (stat virale)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items     WordListItem[]
+}
+
+// Un mot dans une liste (dénormalisé — pas de FK vers Word)
+model WordListItem {
+  id        String   @id @default(cuid())
+  listId    String
+  list      WordList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  word      String   // le texte du mot
+  position  Int      @default(0)  // ordre d'affichage
+
+  createdAt DateTime @default(now())
+
+  @@unique([listId, word])
 }
 
 // Une session de dictée

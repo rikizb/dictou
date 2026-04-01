@@ -40,6 +40,12 @@ export default async function DashboardLayout({
               <span>📚</span><span className="hidden sm:inline"> Mes mots</span>
             </Link>
             <Link
+              href="/listes"
+              className="px-2 py-2 sm:px-3 sm:py-1.5 text-sm font-medium text-gray-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition"
+            >
+              <span>📋</span><span className="hidden sm:inline"> Mes listes</span>
+            </Link>
+            <Link
               href="/stats"
               className="px-2 py-2 sm:px-3 sm:py-1.5 text-sm font-medium text-gray-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition"
             >

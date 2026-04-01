@@ -2,26 +2,14 @@
 
 ---
 
-## F1 · Guard navigation — protection de la session de dictée
+## F1 · Persistance de la session de dictée ✅ DONE
 
-**Statut :** À faire
-**Complexité :** Facile
+**Comportement :**
+- Naviguer vers une autre page de Dictou (ex : "Mes mots") puis revenir sur "Dictée" retrouve exactement la même phrase et les mêmes mots déjà cochés
+- L'état est sauvegardé dans `localStorage` à chaque changement (phase, phrase courante, mots cochés, stats)
+- Le localStorage est vidé proprement quand on clique "Terminer" ou "Nouvelle session"
 
-**Problème :**
-Quand l'utilisateur est en pleine dictée (phase "dictating") et clique sur un lien de navigation interne (ex : "Mes mots", "Stats", "Dashboard"), la session est immédiatement perdue sans aucun avertissement.
-
-**Comportement souhaité :**
-- Si une dictée est en cours (phase "dictating" ou session active), intercepter les clics sur les liens de navigation Dictou
-- Afficher une modale de confirmation : *"Tu es en pleine dictée ! Si tu quittes maintenant, ta session sera perdue. Quitter quand même ?"*
-- Boutons : **Rester** (annule) / **Quitter** (navigue et termine la session proprement via PATCH `/api/sessions`)
-- Si la session est en phase "setup", "loading" ou "finished" : navigation libre, pas de confirmation
-
-**Implémentation suggérée :**
-- Créer un contexte `DictationSessionContext` qui expose l'état actif de la session
-- Dans le layout dashboard (`src/app/(dashboard)/layout.tsx`), wrapper les liens `<Link>` de la nav dans un composant `<NavGuardLink>` qui intercepte le clic si une session est active
-- Alternative plus simple : `useRouter` + `beforeunload` event dans la page practice
-
-**Fichiers concernés :** `src/app/(dashboard)/layout.tsx`, `src/app/(dashboard)/practice/page.tsx`
+**Implémenté dans :** `src/app/(dashboard)/practice/page.tsx` (clé `dictou_active_session`)
 
 ---
 
