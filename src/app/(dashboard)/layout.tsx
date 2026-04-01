@@ -20,32 +20,32 @@ export default async function DashboardLayout({
             <span>✏️</span>
             <span>Dictou</span>
           </Link>
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-0.5 sm:gap-1">
             <Link
               href="/dashboard"
-              className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition"
+              className="px-2 py-2 sm:px-3 sm:py-1.5 text-sm font-medium text-gray-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition"
             >
-              🏠 Accueil
+              <span>🏠</span><span className="hidden sm:inline"> Accueil</span>
             </Link>
             <Link
               href="/practice"
-              className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition"
+              className="px-2 py-2 sm:px-3 sm:py-1.5 text-sm font-medium text-gray-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition"
             >
-              🎯 Pratiquer
+              <span>🎯</span><span className="hidden sm:inline"> Pratiquer</span>
             </Link>
             <Link
               href="/words"
-              className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition"
+              className="px-2 py-2 sm:px-3 sm:py-1.5 text-sm font-medium text-gray-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition"
             >
-              📚 Mes mots
+              <span>📚</span><span className="hidden sm:inline"> Mes mots</span>
             </Link>
             <Link
               href="/stats"
-              className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition"
+              className="px-2 py-2 sm:px-3 sm:py-1.5 text-sm font-medium text-gray-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition"
             >
-              📊 Stats
+              <span>📊</span><span className="hidden sm:inline"> Stats</span>
             </Link>
-            <div className="ml-2">
+            <div className="ml-1 sm:ml-2">
               <UserButton afterSignOutUrl="/" />
             </div>
           </nav>
@@ -53,7 +53,7 @@ export default async function DashboardLayout({
       </header>
 
       {/* Page content */}
-      <main className="max-w-5xl mx-auto px-4 py-8">{children}</main>
+      <main className="max-w-5xl mx-auto px-4 py-4 sm:py-8">{children}</main>
     </div>
   );
 }

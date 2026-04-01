@@ -49,15 +49,15 @@ export default function DashboardPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative bg-gradient-to-r from-purple-600 to-blue-500 rounded-3xl p-8 text-white shadow-lg overflow-hidden"
+        className="relative bg-gradient-to-r from-purple-600 to-blue-500 rounded-3xl p-5 sm:p-8 text-white shadow-lg overflow-hidden"
       >
-        <p className="text-purple-200 text-lg">
+        <p className="text-purple-200 text-base sm:text-lg">
           {greeting()},{" "}
           <span className="font-bold text-white">
             {user?.firstName || "champion"} !
           </span>
         </p>
-        <h1 className="text-3xl font-bold mt-1">
+        <h1 className="text-2xl sm:text-3xl font-bold mt-1 pr-20 sm:pr-28">
           {stats?.streak.current && stats.streak.current > 0
             ? `🔥 ${stats.streak.current} jour${stats.streak.current > 1 ? "s" : ""} de suite !`
             : "Prêt à t'entraîner ?"}
@@ -65,12 +65,12 @@ export default function DashboardPage() {
         <p className="text-purple-200 mt-2">
           {stats?.totalXp || 0} ⭐ XP total
         </p>
-        <div className="absolute right-6 bottom-0 opacity-90 pointer-events-none">
-          <Mascot size={100} mood={stats?.streak.current && stats.streak.current >= 3 ? "excited" : "happy"} />
+        <div className="absolute right-4 sm:right-6 bottom-0 opacity-90 pointer-events-none">
+          <Mascot size={80} mood={stats?.streak.current && stats.streak.current >= 3 ? "excited" : "happy"} />
         </div>
         <Link
           href="/practice"
-          className="inline-block mt-4 px-6 py-3 bg-white text-purple-700 font-bold rounded-xl hover:scale-105 transition shadow"
+          className="inline-block mt-4 px-5 py-2.5 sm:px-6 sm:py-3 bg-white text-purple-700 font-bold rounded-xl hover:scale-105 transition shadow"
         >
           🎯 Lancer une dictée
         </Link>
@@ -120,11 +120,11 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
-              className={`${card.bg} rounded-2xl p-5 border border-white`}
+              className={`${card.bg} rounded-2xl p-4 sm:p-5 border border-white`}
             >
-              <div className="text-3xl mb-2">{card.icon}</div>
-              <div className={`text-2xl font-bold ${card.color}`}>{card.value}</div>
-              <div className="text-xs text-gray-500 mt-1">{card.label}</div>
+              <div className="text-2xl sm:text-3xl mb-1 sm:mb-2">{card.icon}</div>
+              <div className={`text-xl sm:text-2xl font-bold ${card.color}`}>{card.value}</div>
+              <div className="text-xs text-gray-500 mt-1 leading-tight">{card.label}</div>
             </motion.div>
           ))}
         </div>
@@ -152,8 +152,8 @@ export default function DashboardPage() {
               const pct = stats.totalWords > 0 ? (count / stats.totalWords) * 100 : 0;
               return (
                 <div key={level} className="flex items-center gap-3">
-                  <span className="text-lg w-6">{emoji}</span>
-                  <span className="text-sm text-gray-600 w-36">{label}</span>
+                  <span className="text-base w-5">{emoji}</span>
+                  <span className="text-sm text-gray-600 w-24 sm:w-36">{label}</span>
                   <div className="flex-1 bg-gray-100 rounded-full h-3">
                     <motion.div
                       initial={{ width: 0 }}

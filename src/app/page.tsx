@@ -44,25 +44,25 @@ export default function LandingPage() {
           className="max-w-2xl"
         >
           <div className="flex justify-center mb-4">
-            <Mascot size={140} mood="happy" />
+            <Mascot size={100} mood="happy" />
           </div>
-          <h1 className="text-5xl font-bold text-gray-900 mb-4 leading-tight">
+          <h1 className="text-3xl sm:text-5xl font-bold text-gray-900 mb-4 leading-tight">
             Apprends la dictée{" "}
             <span className="text-purple-600">en t'amusant !</span>
           </h1>
-          <p className="text-xl text-gray-600 mb-8">
+          <p className="text-base sm:text-xl text-gray-600 mb-8">
             Des phrases intelligentes générées selon tes mots à apprendre.
             Progresse à ton rythme, gagne des étoiles, deviens champion de dictée !
           </p>
 
-          <div className="flex gap-4 justify-center flex-wrap">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
             <SignUpButton mode="modal">
-              <button className="px-8 py-4 bg-purple-600 text-white text-lg font-bold rounded-2xl hover:bg-purple-700 transition shadow-lg hover:shadow-xl hover:scale-105 active:scale-95">
+              <button className="w-full sm:w-auto px-8 py-4 bg-purple-600 text-white text-base sm:text-lg font-bold rounded-2xl hover:bg-purple-700 transition shadow-lg hover:shadow-xl hover:scale-105 active:scale-95">
                 Commencer gratuitement 🚀
               </button>
             </SignUpButton>
             <SignInButton mode="modal">
-              <button className="px-8 py-4 bg-white text-purple-700 text-lg font-bold rounded-2xl border-2 border-purple-200 hover:border-purple-400 transition">
+              <button className="w-full sm:w-auto px-8 py-4 bg-white text-purple-700 text-base sm:text-lg font-bold rounded-2xl border-2 border-purple-200 hover:border-purple-400 transition">
                 J'ai déjà un compte
               </button>
             </SignInButton>

@@ -388,7 +388,7 @@ export default function PracticePage() {
                   onClick={() => toggleWord(word.id)}
                   whileTap={{ scale: 0.9 }}
                   className={`
-                    flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 font-medium text-sm
+                    flex items-center gap-1.5 px-3 py-2.5 rounded-xl border-2 font-medium text-sm
                     transition-all duration-150 select-none cursor-pointer
                     ${state === "correct"
                       ? "bg-green-100 border-green-400 text-green-800"

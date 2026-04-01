@@ -106,7 +106,7 @@ export default function WordsPage() {
         <p className="text-sm text-gray-500 mb-3">
           Tape un ou plusieurs mots, séparés par des virgules ou des retours à la ligne
         </p>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <textarea
             ref={inputRef as any}
             value={input}
@@ -121,7 +121,7 @@ export default function WordsPage() {
           <button
             onClick={handleAdd}
             disabled={adding || !input.trim()}
-            className="px-6 py-3 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2 self-start"
+            className="w-full sm:w-auto px-6 py-3 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 sm:self-start"
           >
             {adding ? (
               <span className="animate-spin">⏳</span>
@@ -149,7 +149,7 @@ export default function WordsPage() {
           <button
             key={key}
             onClick={() => setFilter(key)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
+            className={`px-3 py-2 rounded-full text-sm font-medium transition ${
               filter === key
                 ? "bg-purple-600 text-white"
                 : "bg-white text-gray-600 border border-gray-200 hover:border-purple-300"
@@ -193,7 +193,7 @@ export default function WordsPage() {
                   </span>
                   <button
                     onClick={() => handleDelete(word.id, word.text)}
-                    className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition text-lg leading-none"
+                    className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 text-gray-300 hover:text-red-400 active:text-red-500 transition text-lg leading-none p-1 -m-1"
                     title="Supprimer"
                   >
                     ×

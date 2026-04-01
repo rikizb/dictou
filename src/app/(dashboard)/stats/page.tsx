@@ -62,11 +62,11 @@ export default function StatsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className={`${card.bg} rounded-2xl p-5`}
+            className={`${card.bg} rounded-2xl p-4 sm:p-5`}
           >
-            <div className="text-3xl mb-2">{card.emoji}</div>
-            <div className={`text-2xl font-bold ${card.color}`}>{card.value}</div>
-            <div className="text-xs text-gray-500 mt-1">{card.label}</div>
+            <div className="text-2xl sm:text-3xl mb-1 sm:mb-2">{card.emoji}</div>
+            <div className={`text-xl sm:text-2xl font-bold ${card.color}`}>{card.value}</div>
+            <div className="text-xs text-gray-500 mt-1 leading-tight">{card.label}</div>
           </motion.div>
         ))}
       </div>
@@ -136,21 +136,21 @@ export default function StatsPage() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.05 }}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-xl"
+                  className="flex items-start sm:items-center justify-between gap-2 p-4 bg-gray-50 rounded-xl"
                 >
-                  <div>
-                    <div className="font-medium text-gray-800 capitalize">
+                  <div className="min-w-0">
+                    <div className="font-medium text-gray-800 capitalize text-sm sm:text-base truncate">
                       {dateStr}
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-xs sm:text-sm text-gray-500">
                       {session.totalSentences} phrase{session.totalSentences !== 1 ? "s" : ""}
                       {" · "}
                       {session.totalWords} mot{session.totalWords !== 1 ? "s" : ""}
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex-shrink-0">
                     <div
-                      className={`text-lg font-bold ${
+                      className={`text-base sm:text-lg font-bold ${
                         accuracy >= 80
                           ? "text-green-600"
                           : accuracy >= 60
@@ -160,7 +160,7 @@ export default function StatsPage() {
                     >
                       {accuracy}%
                     </div>
-                    <div className="text-sm text-purple-600 font-medium">
+                    <div className="text-xs sm:text-sm text-purple-600 font-medium">
                       +{session.xpEarned} XP
                     </div>
                   </div>
