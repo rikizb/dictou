@@ -2,7 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
-// POST /api/public/lists/[slug]/copy — copie les mots dans le compte de l'utilisateur
+// POST /api/public/lists/[slug]/copy — s'abonner à une liste et copier ses mots
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
@@ -27,45 +27,45 @@ export async function POST(
     await prisma.streak.create({ data: { userId: user.id } });
   }
 
-  let addedCount = 0;
-  let skippedCount = 0;
+  // Crée ou met à jour l'abonnement
+  await prisma.wordListSubscription.upsert({
+    where: { userId_listId: { userId: user.id, listId: list.id } },
+    update: { lastSyncedAt: new Date() },
+    create: { userId: user.id, listId: list.id },
+  });
 
-  // Vérifie les mots déjà présents pour compter proprement ajouts vs doublons
   const texts = list.items
     .map(({ word }) => word.trim().toLowerCase())
     .filter(Boolean);
 
+  // Mots déjà présents
   const existing = await prisma.word.findMany({
     where: { userId: user.id, text: { in: texts } },
     select: { text: true },
   });
   const existingSet = new Set(existing.map((w) => w.text));
 
-  await Promise.all(
-    texts.map(async (text) => {
-      await prisma.word.upsert({
-        where: { userId_text: { userId: user!.id, text } },
-        update: {},
-        create: {
-          userId: user!.id,
-          text,
-          source: "MANUAL",
-          priorityScore: 100,
-        },
-      });
-      if (existingSet.has(text)) {
-        skippedCount++;
-      } else {
-        addedCount++;
-      }
-    })
-  );
+  const newTexts = texts.filter((t) => !existingSet.has(t));
+  const skippedCount = texts.length - newTexts.length;
 
-  // Incrémente copyCount de façon atomique
+  if (newTexts.length > 0) {
+    await prisma.word.createMany({
+      data: newTexts.map((text) => ({
+        userId: user!.id,
+        text,
+        source: "MANUAL" as const,
+        sourceListId: list.id,
+        priorityScore: 100,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  // Incrémente copyCount de façon atomique (seulement si premier abonnement)
   await prisma.wordList.update({
     where: { slug },
     data: { copyCount: { increment: 1 } },
   });
 
-  return NextResponse.json({ addedCount, skippedCount });
+  return NextResponse.json({ addedCount: newTexts.length, skippedCount });
 }

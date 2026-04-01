@@ -18,14 +18,31 @@ interface WordListSummary {
   updatedAt: string;
 }
 
+interface Subscription {
+  listId: string;
+  lastSyncedAt: string;
+  createdAt: string;
+  list: {
+    id: string;
+    slug: string;
+    name: string;
+    isPublic: boolean;
+    isArchived: boolean;
+    itemCount: number;
+    ownerClerkId: string;
+  };
+}
+
 type MenuState = { id: string; action: "rename" | "menu" } | null;
 
 export default function ListesPage() {
   const router = useRouter();
   const [lists, setLists] = useState<WordListSummary[]>([]);
   const [archivedLists, setArchivedLists] = useState<WordListSummary[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [showArchived, setShowArchived] = useState(false);
+  const [syncingListId, setSyncingListId] = useState<string | null>(null);
 
   // Formulaire nouvelle liste
   const [showNewForm, setShowNewForm] = useState(false);
@@ -39,12 +56,14 @@ export default function ListesPage() {
   const menuRef = useRef<HTMLDivElement>(null);
 
   const loadLists = async () => {
-    const [activeRes, archivedRes] = await Promise.all([
+    const [activeRes, archivedRes, subsRes] = await Promise.all([
       fetch("/api/lists"),
       fetch("/api/lists?includeArchived=true"),
+      fetch("/api/subscriptions"),
     ]);
     const activeData = await activeRes.json();
     const allData = await archivedRes.json();
+    const subsData = subsRes.ok ? await subsRes.json() : { subscriptions: [] };
 
     const active = (activeData.lists || []) as WordListSummary[];
     const all = (allData.lists || []) as WordListSummary[];
@@ -52,6 +71,7 @@ export default function ListesPage() {
 
     setLists(active);
     setArchivedLists(archived);
+    setSubscriptions(subsData.subscriptions || []);
     setLoading(false);
   };
 
@@ -145,6 +165,36 @@ export default function ListesPage() {
       toast.success(currentlyArchived ? "Liste restaurée" : "Liste archivée");
     } catch {
       toast.error("Erreur");
+    }
+  };
+
+  const handleSyncSubscription = async (listId: string) => {
+    setSyncingListId(listId);
+    try {
+      const r = await fetch("/api/sync", { method: "POST" });
+      const data = await r.json();
+      if (data.addedCount > 0) {
+        toast.success(`🔄 ${data.addedCount} nouveau${data.addedCount > 1 ? "x mots" : " mot"} ajouté${data.addedCount > 1 ? "s" : ""} !`);
+      } else {
+        toast("Tout est à jour ✅", { icon: "🔄" });
+      }
+      await loadLists();
+    } catch {
+      toast.error("Erreur lors de la synchronisation");
+    } finally {
+      setSyncingListId(null);
+    }
+  };
+
+  const handleUnsubscribe = async (listId: string, listName: string) => {
+    if (!confirm(`Se désabonner de "${listName}" ? Les mots déjà copiés restent dans ta liste.`)) return;
+    try {
+      const r = await fetch(`/api/subscriptions/${listId}`, { method: "DELETE" });
+      if (!r.ok) throw new Error();
+      toast.success(`Désabonné de "${listName}"`);
+      await loadLists();
+    } catch {
+      toast.error("Erreur lors du désabonnement");
     }
   };
 
@@ -395,6 +445,51 @@ export default function ListesPage() {
               <ListCard key={list.id} list={list} />
             ))}
           </AnimatePresence>
+        </div>
+      )}
+
+      {/* Section Mes abonnements */}
+      {subscriptions.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-bold text-gray-800">🔔 Mes abonnements</h2>
+          <p className="text-sm text-gray-500">Listes partagées auxquelles tu es abonné. Les nouveaux mots sont ajoutés automatiquement à ta connexion.</p>
+          <div className="space-y-2">
+            {subscriptions.map((sub) => (
+              <div key={sub.listId} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-4">
+                <div className="flex-1 min-w-0">
+                  <a
+                    href={`/liste/${sub.list.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-gray-800 hover:text-purple-700 transition truncate block"
+                  >
+                    {sub.list.name}
+                  </a>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {sub.list.itemCount} mot{sub.list.itemCount !== 1 ? "s" : ""} · dernière synchro{" "}
+                    {new Date(sub.lastSyncedAt).toLocaleDateString("fr-FR")}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => handleSyncSubscription(sub.listId)}
+                    disabled={syncingListId === sub.listId}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-xl transition disabled:opacity-50"
+                  >
+                    <span className={syncingListId === sub.listId ? "animate-spin" : ""}>🔄</span>
+                    <span className="hidden sm:inline">Sync</span>
+                  </button>
+                  <button
+                    onClick={() => handleUnsubscribe(sub.listId, sub.list.name)}
+                    className="px-3 py-1.5 text-sm text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-xl transition"
+                    title="Se désabonner"
+                  >
+                    Se désabonner
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

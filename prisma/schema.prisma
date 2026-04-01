@@ -21,10 +21,11 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  words     Word[]
-  sessions  Session[]
-  streaks   Streak[]
-  wordLists WordList[]
+  words         Word[]
+  sessions      Session[]
+  streaks       Streak[]
+  wordLists     WordList[]
+  subscriptions WordListSubscription[]
 }
 
 // Un mot à apprendre
@@ -54,6 +55,10 @@ model Word {
   // Priorité calculée (mise à jour après chaque session)
   priorityScore Float @default(100)
 
+  // Origine depuis une liste partagée (abonnement)
+  sourceListId  String?
+  sourceList    WordList? @relation("SubscribedWords", fields: [sourceListId], references: [id], onDelete: SetNull)
+
   sentenceWords SentenceWord[]
 
   @@unique([userId, text])
@@ -67,15 +72,30 @@ model WordList {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  isPublic   Boolean @default(true)   // false = liste privée (hors scope MVP)
-  isArchived Boolean @default(false)  // liste archivée = masquée par défaut
+  isPublic   Boolean @default(true)
+  isArchived Boolean @default(false)
 
-  copyCount Int      @default(0)      // compteur de copies (stat virale)
+  copyCount Int      @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  items     WordListItem[]
+  items           WordListItem[]
+  subscriptions   WordListSubscription[]
+  subscribedWords Word[]                  @relation("SubscribedWords")
+}
+
+// Abonnement d'un utilisateur à une liste partagée
+model WordListSubscription {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listId       String
+  list         WordList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  lastSyncedAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, listId])
 }
 
 // Un mot dans une liste (dénormalisé — pas de FK vers Word)
