@@ -31,7 +31,7 @@ interface SessionStats {
   totalXp: number;
 }
 
-type Phase = "setup" | "loading" | "dictating" | "reviewing" | "finished";
+type Phase = "setup" | "loading" | "dictating" | "finished";
 
 const LEVELS: { key: Level; label: string }[] = [
   { key: "cp", label: "CP" },
@@ -50,7 +50,6 @@ export default function PracticePage() {
   const [sessionStats, setSessionStats] = useState<SessionStats>({
     totalSentences: 0, totalWords: 0, correctWords: 0, totalXp: 0,
   });
-  const [lastXp, setLastXp] = useState<number | null>(null);
   const [mascotMood, setMascotMood] = useState<"happy" | "excited" | "thinking" | "celebrate">("happy");
 
   const startSession = async () => {
@@ -96,73 +95,76 @@ export default function PracticePage() {
     }
   };
 
-  // Cycle : pending → correct → wrong → pending
+  // 1 clic = ✅ correct, 2e clic = retour à ⬜ (pas cliqué = ❌ au moment de Continuer)
   const toggleWord = (wordId: string) => {
     if (phase !== "dictating") return;
     setWordStates((prev) => {
       const cur = prev[wordId];
-      const next: WordState = cur === "pending" ? "correct" : cur === "correct" ? "wrong" : "pending";
+      const next: WordState = cur === "pending" ? "correct" : "pending";
       return { ...prev, [wordId]: next };
     });
   };
 
-  const validateSentence = async () => {
+  // Valide + passe à la phrase suivante en un seul clic
+  const continuer = async () => {
     if (!sentence || !sessionId) return;
 
-    const hasPending = Object.values(wordStates).some((s) => s === "pending");
-    if (hasPending) {
-      toast("Clique sur chaque mot : ✅ correct ou ❌ faux", { icon: "ℹ️" });
-      return;
+    // Les mots non cochés (pending) = mal écrits
+    const finalStates = { ...wordStates };
+    for (const w of sentence.allWords) {
+      if (finalStates[w.id] === "pending") finalStates[w.id] = "wrong";
     }
-
-    setPhase("reviewing");
 
     const results = sentence.allWords.map((w) => ({
       wordId: w.id,
-      correct: wordStates[w.id] === "correct",
+      correct: finalStates[w.id] === "correct",
     }));
 
-    try {
-      const r = await fetch("/api/sentences/complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sentenceId: sentence.id, results }),
-      });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error);
+    const correct = results.filter((r) => r.correct).length;
+    const total = results.length;
 
-      const correct = results.filter((r) => r.correct).length;
-      const total = results.length;
-
-      setSessionStats((prev) => ({
-        totalSentences: prev.totalSentences + 1,
-        totalWords: prev.totalWords + total,
-        correctWords: prev.correctWords + correct,
-        totalXp: prev.totalXp + data.xpEarned,
-      }));
-      setLastXp(data.xpEarned);
-
-      if (correct === total && total > 0) {
-        setMascotMood("celebrate");
-        confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 },
-          colors: ["#a855f7", "#3b82f6", "#22c55e", "#f59e0b", "#ec4899"] });
-        toast.success("Parfait ! Tous les mots corrects ! 🌟", { icon: "🎉" });
-      } else if (correct >= total * 0.75) {
-        setMascotMood("excited");
-        toast.success(`Très bien ! ${correct}/${total} corrects 👍`);
-      } else {
-        setMascotMood("happy");
-        toast("Continue à pratiquer ! 💪", { icon: "📚" });
-      }
-    } catch (e: any) {
-      toast.error(e.message || "Erreur lors de la validation");
-      setPhase("dictating");
+    // Feedback immédiat
+    if (correct === total && total > 0) {
+      setMascotMood("celebrate");
+      confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 },
+        colors: ["#a855f7", "#3b82f6", "#22c55e", "#f59e0b", "#ec4899"] });
+      toast.success("Parfait ! Tous les mots corrects ! 🌟", { icon: "🎉" });
+    } else if (correct >= total * 0.75) {
+      setMascotMood("excited");
+      toast.success(`Très bien ! ${correct}/${total} corrects 👍`);
+    } else {
+      setMascotMood("happy");
+      toast(`${correct}/${total} corrects — Continue à pratiquer ! 💪`, { icon: "📚" });
     }
-  };
 
-  const nextSentence = async () => {
-    if (!sessionId) return;
-    setLastXp(null);
+    // Appel API en arrière-plan (non bloquant pour le passage à la suite)
+    fetch("/api/sentences/complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sentenceId: sentence.id, results }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.xpEarned) {
+          setSessionStats((prev) => ({
+            totalSentences: prev.totalSentences + 1,
+            totalWords: prev.totalWords + total,
+            correctWords: prev.correctWords + correct,
+            totalXp: prev.totalXp + data.xpEarned,
+          }));
+        }
+      })
+      .catch(() => {
+        // Stats non critiques, on continue quand même
+        setSessionStats((prev) => ({
+          totalSentences: prev.totalSentences + 1,
+          totalWords: prev.totalWords + total,
+          correctWords: prev.correctWords + correct,
+          totalXp: prev.totalXp,
+        }));
+      });
+
+    // Phrase suivante immédiatement
     await fetchNextSentence(sessionId);
   };
 
@@ -189,16 +191,11 @@ export default function PracticePage() {
 
       if (!wordRef) return <span key={i} className="text-gray-700">{token}</span>;
 
-      const state = wordStates[wordRef.id];
       return (
         <span
           key={i}
           className={`font-semibold px-0.5 rounded transition-colors duration-200 ${
-            phase === "reviewing"
-              ? state === "correct"
-                ? "bg-green-100 text-green-800"
-                : "bg-red-100 text-red-800 line-through"
-              : wordRef.isTarget
+            wordRef.isTarget
               ? "text-purple-700 underline decoration-dotted decoration-purple-400"
               : "text-gray-800"
           }`}
@@ -244,8 +241,8 @@ export default function PracticePage() {
               <li>Une phrase est générée avec tes mots à travailler</li>
               <li>Lis la phrase à voix haute à ton enfant</li>
               <li>Ton enfant écrit la dictée sur papier</li>
-              <li>Clique sur chaque mot : ✅ bien écrit, ❌ mal écrit</li>
-              <li>Valide — la phrase suivante est générée automatiquement</li>
+              <li>Coche les mots bien écrits ✅ (les autres = ❌)</li>
+              <li>Clique sur <strong>Continuer</strong> pour la phrase suivante</li>
             </ol>
           </div>
 
@@ -320,25 +317,12 @@ export default function PracticePage() {
   // ────────────────────────────────────────────────────────────
   // PRATIQUE PRINCIPALE
   // ────────────────────────────────────────────────────────────
-  const allEvaluated = sentence?.allWords.every((w) => wordStates[w.id] !== "pending");
-
   return (
     <div className="max-w-2xl mx-auto space-y-5">
       {/* Barre session */}
       <div className="flex items-center justify-between text-sm text-gray-500">
-        <span>Phrase #{sessionStats.totalSentences + (phase === "reviewing" ? 0 : 1)}</span>
-        <span className="flex items-center gap-1">
-          {sessionStats.totalXp} XP
-          <AnimatePresence>
-            {lastXp && phase === "reviewing" && (
-              <motion.span key="xp"
-                initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                className="text-green-600 font-bold">
-                +{lastXp}
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </span>
+        <span>Phrase #{sessionStats.totalSentences + 1}</span>
+        <span>⭐ {sessionStats.totalXp} XP</span>
       </div>
 
       <div className="bg-white rounded-3xl border border-gray-100 shadow-lg overflow-hidden">
@@ -351,16 +335,14 @@ export default function PracticePage() {
             </div>
             <div className="flex-1">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                {phase === "dictating" ? "📖 Lis cette phrase à voix haute" : "✅ Phrase dictée"}
+                📖 Lis cette phrase à voix haute
               </p>
               <p className="text-xl font-medium leading-relaxed">
                 {renderSentenceTokens()}
               </p>
-              {phase === "dictating" && (
-                <p className="text-xs text-gray-400 mt-2">
-                  Les mots <span className="text-purple-600 underline decoration-dotted">soulignés</span> étaient prioritaires dans ta liste
-                </p>
-              )}
+              <p className="text-xs text-gray-400 mt-2">
+                Les mots <span className="text-purple-600 underline decoration-dotted">soulignés</span> étaient prioritaires dans ta liste
+              </p>
             </div>
           </div>
         </div>
@@ -368,9 +350,7 @@ export default function PracticePage() {
         {/* ── Évaluation des mots ── */}
         <div className="p-6">
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">
-            {phase === "dictating"
-              ? "Clique sur chaque mot pour l'évaluer"
-              : "Résultats mot par mot"}
+            Coche les mots bien écrits
           </h3>
 
           <div className="flex flex-wrap gap-2">
@@ -379,22 +359,17 @@ export default function PracticePage() {
               return (
                 <motion.button key={word.id}
                   onClick={() => toggleWord(word.id)}
-                  disabled={phase === "reviewing"}
-                  whileTap={phase === "dictating" ? { scale: 0.9 } : {}}
+                  whileTap={{ scale: 0.9 }}
                   className={`
                     flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 font-medium text-sm
-                    transition-all duration-150 select-none
-                    ${phase === "reviewing" ? "cursor-default" : "cursor-pointer"}
+                    transition-all duration-150 select-none cursor-pointer
                     ${state === "correct"
                       ? "bg-green-100 border-green-400 text-green-800"
-                      : state === "wrong"
-                      ? "bg-red-100 border-red-400 text-red-800"
                       : "bg-white border-gray-200 text-gray-700 hover:border-purple-400 hover:bg-purple-50"
                     }
-                    ${word.isTarget ? "ring-2 ring-purple-300 ring-offset-1" : ""}
                   `}
                 >
-                  <span>{state === "correct" ? "✅" : state === "wrong" ? "❌" : "⬜"}</span>
+                  <span>{state === "correct" ? "✅" : "⬜"}</span>
                   <span>{word.text}</span>
                   <span className="opacity-50 text-xs">{levelToEmoji(word.level)}</span>
                 </motion.button>
@@ -402,39 +377,21 @@ export default function PracticePage() {
             })}
           </div>
 
-          {phase === "dictating" && (
-            <p className="text-xs text-gray-400 mt-3">
-              1 clic = ✅ bien écrit · 2 clics = ❌ mal écrit · 3 clics = ⬜ annuler
-              {" · "}
-              <span className="text-purple-500">anneau violet</span> = mot prioritaire
-            </p>
-          )}
+          <p className="text-xs text-gray-400 mt-3">
+            1 clic = ✅ bien écrit · pas coché = ❌ mal écrit
+          </p>
         </div>
 
         {/* ── Actions ── */}
         <div className="px-6 pb-6 flex gap-3 justify-end">
-          {phase === "dictating" && (
-            <button onClick={validateSentence}
-              className={`px-6 py-3 font-bold text-white rounded-xl transition ${
-                allEvaluated
-                  ? "bg-purple-600 hover:bg-purple-700 shadow-lg hover:scale-105"
-                  : "bg-gray-300 cursor-not-allowed"
-              }`}>
-              Valider ✓
-            </button>
-          )}
-          {phase === "reviewing" && (
-            <>
-              <button onClick={finishSession}
-                className="px-4 py-3 text-gray-600 font-medium rounded-xl border border-gray-200 hover:bg-gray-50 transition">
-                Terminer
-              </button>
-              <button onClick={nextSentence}
-                className="px-6 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition shadow hover:scale-105">
-                Suivante →
-              </button>
-            </>
-          )}
+          <button onClick={finishSession}
+            className="px-4 py-3 text-gray-600 font-medium rounded-xl border border-gray-200 hover:bg-gray-50 transition">
+            Terminer
+          </button>
+          <button onClick={continuer}
+            className="px-6 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition shadow hover:scale-105">
+            Continuer →
+          </button>
         </div>
       </div>
 

@@ -35,21 +35,24 @@ export async function generateDictationSentence(
 
 RÈGLES ABSOLUES :
 1. La phrase doit être 100% grammaticalement correcte en français
-2. La phrase doit avoir un sens logique et concret qu'un enfant peut visualiser
-3. Chaque mot doit s'enchaîner naturellement avec le suivant
-4. Vérifie mentalement : sujet + verbe accordé + compléments cohérents
-5. Pas de constructions alambiquées, pas d'expressions figées mal utilisées
-6. Si un mot imposé est difficile à intégrer naturellement, construis la phrase autour de lui
+2. La phrase doit raconter quelque chose de concret et visuel qu'un enfant peut imaginer facilement
+3. Chaque mot doit s'enchaîner naturellement : vérifie sujet + verbe accordé + compléments logiques
+4. Si un mot imposé est un nom commun, construis une scène concrète autour de lui
+5. Jamais de répétition du même mot ou structure bizarre
+6. La phrase doit se lire à voix haute sans hésitation
 
-EXEMPLES DE PHRASES INCORRECTES À ÉVITER :
-- "La grenouille du sien saute bien." ❌ (sien n'a pas de sens ici)
-- "Le beau chien rouge mange le vite." ❌ (adverbe mal placé)
-- "Marie court le jardin." ❌ (préposition manquante)
+EXEMPLES INTERDITS (phrases qui n'ont pas de sens) :
+- "Le jouet ci est le sien de ma sœur." ❌
+- "La grenouille du sien saute bien." ❌
+- "Il mange le vite dans la cuisine." ❌
+- "Le beau rouge enfant court jardin." ❌
 
-EXEMPLES DE BONNES PHRASES :
-- "La grenouille verte saute sur le nénuphar." ✅
-- "Le petit garçon mange une pomme dans le jardin." ✅
-- "Chaque matin, Sophie prend son cartable et part à l'école." ✅`;
+EXEMPLES PARFAITS :
+- "Le petit chien roux joue avec une balle rouge dans le jardin." ✅
+- "Chaque matin, Léa prend son cartable et court jusqu'à l'école." ✅
+- "La sorcière agite sa baguette magique et fait apparaître un château." ✅
+- "Les enfants ramassent des châtaignes sous les grands arbres de la forêt." ✅
+- "Mon frère a trouvé un beau caillou brillant au bord de la rivière." ✅`;
 
   const userPrompt = `Niveau : ${levelGuide}
 
@@ -66,7 +69,7 @@ Réponds UNIQUEMENT avec ce JSON (rien d'autre) :
 {"sentence": "Ta phrase ici."}`;
 
   const response = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
+    model: "claude-sonnet-4-5-20251001",
     max_tokens: 200,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
@@ -102,7 +105,7 @@ async function retryWithMissingWords(
   systemPrompt: string
 ): Promise<GeneratedSentence> {
   const response = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
+    model: "claude-sonnet-4-5-20251001",
     max_tokens: 200,
     system: systemPrompt,
     messages: [{

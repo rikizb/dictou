@@ -1,17 +1,36 @@
 // Mots trop communs pour être intéressants à apprendre (articles, prépositions, conjonctions)
 export const FRENCH_STOPWORDS = new Set([
+  // Articles
   "le","la","les","l","un","une","des","du","de","d",
+  // Conjonctions
   "et","ou","mais","donc","or","ni","car","que","qui","quoi","dont","où",
+  "quoique","lorsque","puisque","parce","quand","comme","si","tandis","bien",
+  // Prépositions
   "à","au","aux","en","dans","sur","sous","par","pour","avec","sans","entre",
-  "vers","chez","jusqu","depuis","pendant","avant","après","contre",
+  "vers","chez","jusqu","depuis","pendant","avant","après","contre","selon",
+  "malgré","parmi","hormis","sauf","dès","hors","outre","via",
+  // Pronoms personnels
   "il","elle","ils","elles","je","tu","nous","vous","on","me","te","se","lui","y","en",
-  "ce","cette","ces","cet","mon","ma","mes","ton","ta","tes","son","sa","ses","notre",
-  "votre","leur","leurs","mon","ma",
+  // Pronoms démonstratifs
+  "ce","cet","cette","ces","ci","celui","celle","ceux","celles","ceci","cela","ça",
+  // Pronoms possessifs (sources d'erreurs !)
+  "mien","mienne","miens","miennes",
+  "tien","tienne","tiens","tiennes",
+  "sien","sienne","siens","siennes",
+  "nôtre","vôtre","leur","leurs",
+  // Adjectifs possessifs
+  "mon","ma","mes","ton","ta","tes","son","sa","ses","notre","votre",
+  // Verbes auxiliaires et courants
   "est","sont","était","étaient","a","ont","avait","avaient","été","avoir",
+  "faire","fait","faite","faits","faites","être","aller","va","vais","vont","allait",
+  "dire","dit","dite","voir","vu","venir","vient","venu",
+  // Adverbes courants
   "se","si","ne","pas","plus","très","bien","aussi","même","tout","tous","toute","toutes",
-  "plus","moins","très","trop","assez","peu","beaucoup",
-  "quand","comme","car","puis","alors","ensuite","enfin","donc",
-  "là","ici","voici","voilà",
+  "moins","trop","assez","peu","beaucoup","encore","déjà","jamais","souvent","toujours",
+  "puis","alors","ensuite","enfin","donc","ainsi","aussi","voilà","voici",
+  "là","ici","ailleurs","partout","nulle","quelque",
+  // Particules
+  "oui","non","peut","doit","faut","soit",
 ]);
 
 // Nettoie un mot (minuscules, sans ponctuation)
@@ -35,7 +54,7 @@ export function extractSignificantWords(sentence: string): string[] {
     }
 
     const clean = cleanWord(trimmed);
-    if (clean.length < 2) { isFirstToken = false; continue; }
+    if (clean.length < 3) { isFirstToken = false; continue; }
     if (FRENCH_STOPWORDS.has(clean)) { isFirstToken = false; continue; }
 
     // Exclut les noms propres : mot avec majuscule qui n'est PAS en début de phrase
