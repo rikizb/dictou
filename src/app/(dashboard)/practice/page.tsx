@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import confetti from "canvas-confetti";
 import Link from "next/link";
 import { levelToEmoji } from "@/lib/scoring";
 import { Mascot } from "@/components/Mascot";
+
+const STORAGE_KEY = "dictou_active_session";
 
 type Level = "cp" | "ce1" | "ce2" | "cm1" | "cm2";
 type WordState = "pending" | "correct" | "wrong";
@@ -41,16 +43,39 @@ const LEVELS: { key: Level; label: string }[] = [
   { key: "cm2", label: "CM2" },
 ];
 
+function loadPersistedSession() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 export default function PracticePage() {
-  const [phase, setPhase] = useState<Phase>("setup");
-  const [level, setLevel] = useState<Level>("ce1");
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [sentence, setSentence] = useState<Sentence | null>(null);
-  const [wordStates, setWordStates] = useState<Record<string, WordState>>({});
-  const [sessionStats, setSessionStats] = useState<SessionStats>({
-    totalSentences: 0, totalWords: 0, correctWords: 0, totalXp: 0,
-  });
+  const persisted = typeof window !== "undefined" ? loadPersistedSession() : null;
+
+  const [phase, setPhase] = useState<Phase>(persisted?.phase ?? "setup");
+  const [level, setLevel] = useState<Level>(persisted?.level ?? "ce1");
+  const [sessionId, setSessionId] = useState<string | null>(persisted?.sessionId ?? null);
+  const [sentence, setSentence] = useState<Sentence | null>(persisted?.sentence ?? null);
+  const [wordStates, setWordStates] = useState<Record<string, WordState>>(persisted?.wordStates ?? {});
+  const [sessionStats, setSessionStats] = useState<SessionStats>(
+    persisted?.sessionStats ?? { totalSentences: 0, totalWords: 0, correctWords: 0, totalXp: 0 }
+  );
   const [mascotMood, setMascotMood] = useState<"happy" | "excited" | "thinking" | "celebrate">("happy");
+
+  // Sauvegarde la session dans localStorage à chaque changement d'état pertinent
+  useEffect(() => {
+    if (phase === "dictating" && sessionId && sentence) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        phase, level, sessionId, sentence, wordStates, sessionStats,
+      }));
+    } else if (phase === "setup" || phase === "finished") {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }, [phase, level, sessionId, sentence, wordStates, sessionStats]);
 
   const startSession = async () => {
     setPhase("loading");
@@ -176,6 +201,7 @@ export default function PracticePage() {
         body: JSON.stringify({ sessionId }),
       });
     }
+    localStorage.removeItem(STORAGE_KEY);
     setPhase("finished");
   };
 
@@ -300,6 +326,7 @@ export default function PracticePage() {
         </div>
         <div className="flex gap-3 justify-center">
           <button onClick={() => {
+            localStorage.removeItem(STORAGE_KEY);
             setPhase("setup"); setSessionId(null); setSentence(null);
             setSessionStats({ totalSentences: 0, totalWords: 0, correctWords: 0, totalXp: 0 });
           }} className="px-6 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition">
