@@ -57,7 +57,7 @@ export default function PracticePage() {
   const persisted = typeof window !== "undefined" ? loadPersistedSession() : null;
 
   const [phase, setPhase] = useState<Phase>(persisted?.phase ?? "setup");
-  const [level, setLevel] = useState<Level>(persisted?.level ?? "ce1");
+  const [level, setLevel] = useState<Level>(persisted?.level ?? "cp");
   const [sessionId, setSessionId] = useState<string | null>(persisted?.sessionId ?? null);
   const [sentence, setSentence] = useState<Sentence | null>(persisted?.sentence ?? null);
   const [wordStates, setWordStates] = useState<Record<string, WordState>>(persisted?.wordStates ?? {});
@@ -256,16 +256,17 @@ export default function PracticePage() {
         <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm space-y-5">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Niveau scolaire</label>
-            <div className="flex gap-2 flex-wrap">
-              {LEVELS.map(({ key, label }) => (
-                <button key={key} onClick={() => setLevel(key)}
-                  className={`px-4 py-2 rounded-xl font-medium transition ${
-                    level === key ? "bg-purple-600 text-white shadow" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}>
-                  {label}
-                </button>
-              ))}
-            </div>
+            <select
+              value={level}
+              onChange={(e) => setLevel(e.target.value as Level)}
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white"
+            >
+              <option value="cp">CP (6-7 ans) — phrases courtes</option>
+              <option value="ce1">CE1 (7-8 ans) — phrases simples</option>
+              <option value="ce2">CE2 (8-9 ans) — phrases moyennes</option>
+              <option value="cm1">CM1 (9-10 ans) — phrases longues</option>
+              <option value="cm2">CM2 (10-11 ans) — phrases complexes</option>
+            </select>
           </div>
 
           <div className="bg-purple-50 rounded-xl p-4 text-sm text-purple-800">
@@ -296,7 +297,7 @@ export default function PracticePage() {
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <Mascot size={120} mood="thinking" />
         <p className="text-gray-600 text-lg font-medium">Génération de la phrase…</p>
-        <p className="text-gray-400 text-sm">Picsou réfléchit 🤔</p>
+        <p className="text-gray-400 text-sm">Dictou réfléchit 🤔</p>
       </div>
     );
   }
@@ -357,7 +358,10 @@ export default function PracticePage() {
       {/* Barre session */}
       <div className="flex items-center justify-between text-sm text-gray-500">
         <span>Phrase #{sessionStats.totalSentences + 1}</span>
-        <span>⭐ {sessionStats.totalXp} XP</span>
+        <select value={level} onChange={(e) => setLevel(e.target.value as Level)}
+          className="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-500 bg-white">
+          {LEVELS.map(({key, label}) => <option key={key} value={key}>{label}</option>)}
+        </select>
       </div>
 
       <div className="bg-white rounded-3xl border border-gray-100 shadow-lg overflow-hidden">
@@ -374,9 +378,6 @@ export default function PracticePage() {
               </p>
               <p className="text-xl font-medium leading-relaxed">
                 {renderSentenceTokens()}
-              </p>
-              <p className="text-xs text-gray-400 mt-2">
-                Les mots <span className="text-purple-600 underline decoration-dotted">soulignés</span> étaient prioritaires dans ta liste
               </p>
             </div>
           </div>
@@ -414,6 +415,9 @@ export default function PracticePage() {
 
           <p className="text-xs text-gray-400 mt-3">
             1 clic = ✅ bien écrit · pas coché = ❌ mal écrit
+          </p>
+          <p className="text-xs text-gray-300 mt-2">
+            <span className="text-purple-500">soulignés</span> = mots de ta liste · <span className="opacity-60">autres</span> = nouveaux capturés
           </p>
         </div>
 

@@ -61,8 +61,14 @@ export default function LandingPage() {
                 Commencer gratuitement 🚀
               </button>
             </SignUpButton>
+            <Link
+              href="/jouer"
+              className="w-full sm:w-auto px-8 py-4 bg-white text-purple-700 text-base sm:text-lg font-bold rounded-2xl border-2 border-purple-200 hover:border-purple-400 transition text-center"
+            >
+              Essayer sans compte →
+            </Link>
             <SignInButton mode="modal">
-              <button className="w-full sm:w-auto px-8 py-4 bg-white text-purple-700 text-base sm:text-lg font-bold rounded-2xl border-2 border-purple-200 hover:border-purple-400 transition">
+              <button className="w-full sm:w-auto px-8 py-4 bg-white/60 text-gray-600 text-base sm:text-lg font-medium rounded-2xl border border-gray-200 hover:border-gray-300 transition">
                 J'ai déjà un compte
               </button>
             </SignInButton>

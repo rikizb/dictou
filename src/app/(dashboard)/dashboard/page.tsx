@@ -5,7 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
-import { levelToColor, levelToEmoji, levelToLabel } from "@/lib/scoring";
+// ─── displayLevel helper ──────────────────────────────────────
+function displayLevel(level: number): { emoji: string; label: string; color: string } {
+  if (level === 0) return { emoji: "🔴", label: "Nouveau", color: "bg-red-100 text-red-700 border-red-200" };
+  if (level === 1) return { emoji: "🟠", label: "En cours", color: "bg-orange-100 text-orange-700 border-orange-200" };
+  return { emoji: "⭐", label: "Maîtrisé", color: "bg-yellow-100 text-yellow-700 border-yellow-200" };
+}
 
 // ─── Interfaces ───────────────────────────────────────────────
 
@@ -84,7 +89,9 @@ export default function DashboardPage() {
   const [syncing, setSyncing] = useState(false);
   const [wordInput, setWordInput] = useState("");
   const [adding, setAdding] = useState(false);
-  const [wordFilter, setWordFilter] = useState<"all" | "0" | "1" | "2" | "3">("all");
+  const [wordFilter, setWordFilter] = useState<"all" | "0" | "1" | "2">("all");
+  const [showOwnLists, setShowOwnLists] = useState(false);
+  const [shareModal, setShareModal] = useState<{ id: string; slug: string; name: string; isPublic: boolean } | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wordInputRef = useRef<HTMLTextAreaElement>(null);
@@ -225,7 +232,7 @@ export default function DashboardPage() {
   };
 
   const handleLevelChange = useCallback(async (wordId: string, currentLevel: number) => {
-    const newLevel = (currentLevel + 1) % 4;
+    const newLevel = currentLevel >= 2 ? 0 : currentLevel + 1;
     setWords((prev) => prev.map((w) => w.id === wordId ? { ...w, level: newLevel } : w));
     try {
       const r = await fetch(`/api/words/${wordId}`, {
@@ -344,10 +351,6 @@ export default function DashboardPage() {
     }
   };
 
-  const handleShareList = (slug: string) => {
-    const url = `${window.location.origin}/liste/${slug}`;
-    navigator.clipboard.writeText(url).then(() => toast.success("Lien copié !"));
-  };
 
   // ─── Computed ──────────────────────────────────────────────
 
@@ -355,12 +358,13 @@ export default function DashboardPage() {
     all: words.length,
     "0": words.filter((w) => w.level === 0).length,
     "1": words.filter((w) => w.level === 1).length,
-    "2": words.filter((w) => w.level === 2).length,
-    "3": words.filter((w) => w.level === 3).length,
+    "2": words.filter((w) => w.level >= 2).length,
   };
 
   const filteredWords =
-    wordFilter === "all" ? words : words.filter((w) => w.level.toString() === wordFilter);
+    wordFilter === "all" ? words :
+    wordFilter === "2" ? words.filter((w) => w.level >= 2) :
+    words.filter((w) => w.level.toString() === wordFilter);
 
   // ─── Render ────────────────────────────────────────────────
 
@@ -386,7 +390,7 @@ export default function DashboardPage() {
         <div className="flex flex-wrap gap-4 mt-4 text-sm font-medium">
           <span className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1">
             <span>⭐</span>
-            <span>{wordCounts["3"]} maîtrisés</span>
+            <span>{wordCounts["2"]} maîtrisés</span>
           </span>
           <span className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1">
             <span>🟠</span>
@@ -407,7 +411,7 @@ export default function DashboardPage() {
       </motion.div>
 
       {/* ══════════════════════════════════════════════════
-          2. DÉCOUVRIR DES LISTES
+          2. LISTES PARTAGÉES
       ══════════════════════════════════════════════════ */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
@@ -415,7 +419,7 @@ export default function DashboardPage() {
         transition={{ delay: 0.1 }}
         className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4"
       >
-        <h2 className="text-lg font-bold text-gray-900">🔍 Découvrir des listes</h2>
+        <h2 className="text-lg font-bold text-gray-900">📋 Listes partagées</h2>
 
         {/* Barre de recherche */}
         <div className="relative">
@@ -426,7 +430,7 @@ export default function DashboardPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Chercher une liste publique..."
+            placeholder="🔍 Chercher une liste publique..."
             className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white"
           />
           {searchQuery && (
@@ -434,7 +438,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Résultats */}
+        {/* Résultats de recherche */}
         {searchLoading ? (
           <div className="space-y-2">
             {[...Array(4)].map((_, i) => (
@@ -470,6 +474,48 @@ export default function DashboardPage() {
               </li>
             ))}
           </ul>
+        )}
+
+        {/* Mes abonnements */}
+        {subscriptions.length > 0 && (
+          <div className="pt-2 border-t border-gray-100 space-y-2">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">── Mes abonnements ──</p>
+            {subscriptions.map((sub) => (
+              <div key={sub.listId} className="flex items-center gap-2 py-2 border-b border-gray-50 last:border-0">
+                <div className="flex-1 min-w-0">
+                  <a
+                    href={`/liste/${sub.list.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-gray-800 hover:text-purple-700 transition truncate block text-sm"
+                  >
+                    {sub.list.name}
+                  </a>
+                  <p className="text-xs text-gray-400">
+                    {sub.list.itemCount} mot{sub.list.itemCount !== 1 ? "s" : ""} · synchro le{" "}
+                    {new Date(sub.lastSyncedAt).toLocaleDateString("fr-FR")}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => handleSyncSubscription(sub.listId)}
+                    disabled={syncingListId === sub.listId}
+                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition disabled:opacity-50"
+                  >
+                    <span className={syncingListId === sub.listId ? "animate-spin" : ""}>🔄</span>
+                    <span className="hidden sm:inline">Sync</span>
+                  </button>
+                  <button
+                    onClick={() => handleUnsubscribe(sub.listId, sub.list.name)}
+                    className="px-2 py-1 text-xs text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
+                    title="Désabonner"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </motion.section>
 
@@ -525,8 +571,7 @@ export default function DashboardPage() {
             { key: "all", label: "Tous", emoji: "📋" },
             { key: "0", label: "Nouveaux", emoji: "🔴" },
             { key: "1", label: "En cours", emoji: "🟠" },
-            { key: "2", label: "Connus", emoji: "🔵" },
-            { key: "3", label: "Maîtrisés", emoji: "⭐" },
+            { key: "2", label: "Maîtrisés", emoji: "⭐" },
           ] as const).map(({ key, label, emoji }) => (
             <button
               key={key}
@@ -586,16 +631,16 @@ export default function DashboardPage() {
                       <button
                         onClick={() => handleLevelChange(word.id, word.level)}
                         title="Cliquer pour changer le niveau"
-                        className={`hidden sm:inline-flex w-24 shrink-0 items-center justify-center text-xs px-2 py-0.5 rounded-full border font-medium transition hover:opacity-75 active:scale-95 ${levelToColor(word.level)}`}
+                        className={`hidden sm:inline-flex w-24 shrink-0 items-center justify-center text-xs px-2 py-0.5 rounded-full border font-medium transition hover:opacity-75 active:scale-95 ${displayLevel(word.level).color}`}
                       >
-                        {levelToEmoji(word.level)} {levelToLabel(word.level)}
+                        {displayLevel(word.level).emoji} {displayLevel(word.level).label}
                       </button>
                       <button
                         onClick={() => handleLevelChange(word.id, word.level)}
                         className="sm:hidden text-base shrink-0 active:scale-90 transition"
-                        title={`Niveau: ${levelToLabel(word.level)} — cliquer pour changer`}
+                        title={`Niveau: ${displayLevel(word.level).label} — cliquer pour changer`}
                       >
-                        {levelToEmoji(word.level)}
+                        {displayLevel(word.level).emoji}
                       </button>
                       <span className="w-12 sm:w-14 text-right text-xs text-gray-500 shrink-0">
                         {successRate(word)}
@@ -634,11 +679,20 @@ export default function DashboardPage() {
             Cliquer sur le badge de niveau pour le modifier manuellement
           </p>
         )}
+        <div className="text-center pt-2">
+          <button
+            onClick={() => setShowOwnLists(v => !v)}
+            className="text-sm text-purple-600 hover:text-purple-700 underline"
+          >
+            {showOwnLists ? "Masquer mes listes" : "📚 Créer et gérer mes propres listes"}
+          </button>
+        </div>
       </motion.section>
 
       {/* ══════════════════════════════════════════════════
-          4. MES LISTES
+          4. MES LISTES (conditionnel)
       ══════════════════════════════════════════════════ */}
+      {showOwnLists && (
       <motion.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -755,7 +809,7 @@ export default function DashboardPage() {
                       Gérer
                     </Link>
                     <button
-                      onClick={() => handleShareList(list.slug)}
+                      onClick={() => setShareModal({ id: list.id, slug: list.slug, name: list.name, isPublic: list.isPublic })}
                       className="flex-1 text-center py-1.5 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-xl transition"
                     >
                       🔗 Partager
@@ -767,49 +821,68 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Mes abonnements */}
-        {subscriptions.length > 0 && (
-          <div className="space-y-3 pt-2">
-            <h3 className="font-semibold text-gray-700 text-sm">🔔 Mes abonnements</h3>
-            <div className="space-y-2">
-              {subscriptions.map((sub) => (
-                <div key={sub.listId} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-4">
-                  <div className="flex-1 min-w-0">
-                    <a
-                      href={`/liste/${sub.list.slug}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-semibold text-gray-800 hover:text-purple-700 transition truncate block text-sm"
-                    >
-                      {sub.list.name}
-                    </a>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {sub.list.itemCount} mot{sub.list.itemCount !== 1 ? "s" : ""} · synchro le{" "}
-                      {new Date(sub.lastSyncedAt).toLocaleDateString("fr-FR")}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => handleSyncSubscription(sub.listId)}
-                      disabled={syncingListId === sub.listId}
-                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-xl transition disabled:opacity-50"
-                    >
-                      <span className={syncingListId === sub.listId ? "animate-spin" : ""}>🔄</span>
-                      <span className="hidden sm:inline">Sync</span>
-                    </button>
-                    <button
-                      onClick={() => handleUnsubscribe(sub.listId, sub.list.name)}
-                      className="px-3 py-1.5 text-xs text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-xl transition"
-                    >
-                      Désabonner
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </motion.section>
+      )}
+
+      {/* ══════════════════════════════════════════════════
+          MODAL PARTAGE
+      ══════════════════════════════════════════════════ */}
+      {shareModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full space-y-4"
+          >
+            <h3 className="text-lg font-bold text-gray-900">🔗 Partager la liste</h3>
+            <p className="text-sm text-gray-600 font-medium">"{shareModal.name}"</p>
+            <div className="bg-gray-50 rounded-xl px-3 py-2 text-sm text-gray-700 break-all font-mono">
+              https://dictou2.vercel.app/liste/{shareModal.slug}
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`https://dictou2.vercel.app/liste/${shareModal.slug}`);
+                  toast.success("Lien copié !");
+                }}
+                className="w-full py-2.5 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition text-sm"
+              >
+                📋 Copier le lien
+              </button>
+              {shareModal.isPublic ? (
+                <p className="text-center text-sm text-green-600 font-medium">✅ Liste publique — accessible à tous</p>
+              ) : (
+                <button
+                  onClick={async () => {
+                    try {
+                      const r = await fetch(`/api/lists/${shareModal.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ isPublic: true }),
+                      });
+                      if (!r.ok) throw new Error();
+                      setShareModal(prev => prev ? { ...prev, isPublic: true } : null);
+                      setMyLists(prev => prev.map(l => l.id === shareModal.id ? { ...l, isPublic: true } : l));
+                      toast.success("Liste rendue publique !");
+                    } catch {
+                      toast.error("Erreur lors de la mise à jour");
+                    }
+                  }}
+                  className="w-full py-2.5 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition text-sm"
+                >
+                  🌐 Rendre publique et partager
+                </button>
+              )}
+              <button
+                onClick={() => setShareModal(null)}
+                className="w-full py-2 text-gray-500 hover:text-gray-700 text-sm transition"
+              >
+                Fermer
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
     </div>
   );
