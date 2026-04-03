@@ -30,7 +30,6 @@ interface SessionStats {
   totalSentences: number;
   totalWords: number;
   correctWords: number;
-  totalXp: number;
 }
 
 type Phase = "setup" | "loading" | "dictating" | "finished";
@@ -62,7 +61,7 @@ export default function PracticePage() {
   const [sentence, setSentence] = useState<Sentence | null>(persisted?.sentence ?? null);
   const [wordStates, setWordStates] = useState<Record<string, WordState>>(persisted?.wordStates ?? {});
   const [sessionStats, setSessionStats] = useState<SessionStats>(
-    persisted?.sessionStats ?? { totalSentences: 0, totalWords: 0, correctWords: 0, totalXp: 0 }
+    persisted?.sessionStats ?? { totalSentences: 0, totalWords: 0, correctWords: 0 }
   );
   const [previousSentences, setPreviousSentences] = useState<string[]>(persisted?.previousSentences ?? []);
   const [mascotMood, setMascotMood] = useState<"happy" | "excited" | "thinking" | "celebrate">("happy");
@@ -172,23 +171,18 @@ export default function PracticePage() {
       body: JSON.stringify({ sentenceId: sentence.id, results }),
     })
       .then((r) => r.json())
-      .then((data) => {
-        if (data.xpEarned) {
-          setSessionStats((prev) => ({
-            totalSentences: prev.totalSentences + 1,
-            totalWords: prev.totalWords + total,
-            correctWords: prev.correctWords + correct,
-            totalXp: prev.totalXp + data.xpEarned,
-          }));
-        }
-      })
-      .catch(() => {
-        // Stats non critiques, on continue quand même
+      .then(() => {
         setSessionStats((prev) => ({
           totalSentences: prev.totalSentences + 1,
           totalWords: prev.totalWords + total,
           correctWords: prev.correctWords + correct,
-          totalXp: prev.totalXp,
+        }));
+      })
+      .catch(() => {
+        setSessionStats((prev) => ({
+          totalSentences: prev.totalSentences + 1,
+          totalWords: prev.totalWords + total,
+          correctWords: prev.correctWords + correct,
         }));
       });
 
@@ -317,7 +311,7 @@ export default function PracticePage() {
             <Mascot size={110} mood="celebrate" />
           </div>
           <h1 className="text-3xl font-bold mb-2">Session terminée !</h1>
-          <div className="grid grid-cols-3 gap-4 mt-4">
+          <div className="grid grid-cols-2 gap-4 mt-4">
             <div className="bg-white/20 rounded-2xl p-4">
               <div className="text-2xl font-bold">{sessionStats.totalSentences}</div>
               <div className="text-sm text-purple-200">phrases</div>
@@ -326,17 +320,13 @@ export default function PracticePage() {
               <div className="text-2xl font-bold">{accuracy}%</div>
               <div className="text-sm text-purple-200">précision</div>
             </div>
-            <div className="bg-white/20 rounded-2xl p-4">
-              <div className="text-2xl font-bold">+{sessionStats.totalXp}</div>
-              <div className="text-sm text-purple-200">XP</div>
-            </div>
           </div>
         </div>
         <div className="flex gap-3 justify-center">
           <button onClick={() => {
             localStorage.removeItem(STORAGE_KEY);
             setPhase("setup"); setSessionId(null); setSentence(null);
-            setSessionStats({ totalSentences: 0, totalWords: 0, correctWords: 0, totalXp: 0 });
+            setSessionStats({ totalSentences: 0, totalWords: 0, correctWords: 0 });
             setPreviousSentences([]);
           }} className="px-6 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition">
             🔄 Nouvelle session
@@ -440,8 +430,6 @@ export default function PracticePage() {
           <span>📝 {sessionStats.totalSentences} phrase{sessionStats.totalSentences > 1 ? "s" : ""}</span>
           <span>·</span>
           <span>✅ {sessionStats.totalWords > 0 ? Math.round((sessionStats.correctWords / sessionStats.totalWords) * 100) : 0}%</span>
-          <span>·</span>
-          <span>⭐ {sessionStats.totalXp} XP</span>
         </div>
       )}
     </div>
