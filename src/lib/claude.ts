@@ -8,6 +8,7 @@ interface GenerateSentenceParams {
   targetWords: string[];
   optionalWords?: string[];
   level?: "cp" | "ce1" | "ce2" | "cm1" | "cm2";
+  previousSentences?: string[];
 }
 
 interface GeneratedSentence {
@@ -25,7 +26,7 @@ const LEVEL_GUIDES: Record<string, string> = {
 export async function generateDictationSentence(
   params: GenerateSentenceParams
 ): Promise<GeneratedSentence> {
-  const { targetWords, optionalWords = [], level = "ce1" } = params;
+  const { targetWords, optionalWords = [], level = "ce1", previousSentences = [] } = params;
 
   const levelGuide = LEVEL_GUIDES[level];
   const targetList = targetWords.join(", ");
@@ -58,6 +59,9 @@ EXEMPLES PARFAITS :
 
 Mots OBLIGATOIRES à inclure (tous doivent apparaître) : ${targetList}
 ${optionalList ? `Mots optionnels (utilise-en si ça aide) : ${optionalList}` : ""}
+${previousSentences.length ? `\nPhrases DÉJÀ GÉNÉRÉES cette session (NE PAS répéter le même sujet ni la même structure de début) :\n${previousSentences.map((s, i) => `${i + 1}. "${s}"`).join("\n")}` : ""}
+
+VARIE ABSOLUMENT : le sujet (pas toujours "Maman", "Le chien", "La fille"), le temps (présent, passé composé, futur simple), la structure (affirmative, négative, exclamative).
 
 Génère UNE SEULE phrase de dictée qui :
 - Utilise tous les mots obligatoires
@@ -91,7 +95,7 @@ Réponds UNIQUEMENT avec ce JSON (rien d'autre) :
   );
 
   if (missingWords.length > 0) {
-    return retryWithMissingWords(targetWords, missingWords, level, levelGuide, systemPrompt);
+    return retryWithMissingWords(targetWords, missingWords, level, levelGuide, systemPrompt, previousSentences);
   }
 
   return { text: sentence };
@@ -102,7 +106,8 @@ async function retryWithMissingWords(
   missingWords: string[],
   level: string,
   levelGuide: string,
-  systemPrompt: string
+  systemPrompt: string,
+  previousSentences: string[] = []
 ): Promise<GeneratedSentence> {
   const response = await client.messages.create({
     model: "claude-sonnet-4-5",
@@ -114,6 +119,9 @@ async function retryWithMissingWords(
 
 Tu DOIS inclure ces mots : ${targetWords.join(", ")}
 Ces mots étaient manquants : ${missingWords.join(", ")} — ils DOIVENT être dans la phrase.
+${previousSentences.length ? `\nPhrases DÉJÀ GÉNÉRÉES cette session (NE PAS répéter le même sujet ni la même structure de début) :\n${previousSentences.map((s, i) => `${i + 1}. "${s}"`).join("\n")}` : ""}
+
+VARIE ABSOLUMENT : le sujet (pas toujours "Maman", "Le chien", "La fille"), le temps (présent, passé composé, futur simple), la structure (affirmative, négative, exclamative).
 
 Génère une phrase courte, correcte et amusante pour un enfant.
 Réponds UNIQUEMENT avec : {"sentence": "Ta phrase ici."}`,

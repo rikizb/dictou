@@ -64,13 +64,14 @@ export default function PracticePage() {
   const [sessionStats, setSessionStats] = useState<SessionStats>(
     persisted?.sessionStats ?? { totalSentences: 0, totalWords: 0, correctWords: 0, totalXp: 0 }
   );
+  const [previousSentences, setPreviousSentences] = useState<string[]>(persisted?.previousSentences ?? []);
   const [mascotMood, setMascotMood] = useState<"happy" | "excited" | "thinking" | "celebrate">("happy");
 
   // Sauvegarde la session dans localStorage à chaque changement d'état pertinent
   useEffect(() => {
     if (phase === "dictating" && sessionId && sentence) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        phase, level, sessionId, sentence, wordStates, sessionStats,
+        phase, level, sessionId, sentence, wordStates, sessionStats, previousSentences,
       }));
     } else if (phase === "setup" || phase === "finished") {
       localStorage.removeItem(STORAGE_KEY);
@@ -88,21 +89,23 @@ export default function PracticePage() {
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || "Erreur");
       setSessionId(data.session.id);
-      await fetchNextSentence(data.session.id);
+      setPreviousSentences([]);
+      await fetchNextSentence(data.session.id, []);
     } catch (e: any) {
       toast.error(e.message || "Erreur lors du démarrage");
       setPhase("setup");
     }
   };
 
-  const fetchNextSentence = async (sid: string) => {
+  const fetchNextSentence = async (sid: string, prevSentences?: string[]) => {
     setPhase("loading");
     setMascotMood("thinking");
+    const sentencesHistory = prevSentences ?? previousSentences;
     try {
       const r = await fetch("/api/sentences", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: sid, level }),
+        body: JSON.stringify({ sessionId: sid, level, previousSentences: sentencesHistory }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || "Erreur");
@@ -189,8 +192,12 @@ export default function PracticePage() {
         }));
       });
 
+    // Ajoute la phrase courante à l'historique (max 5)
+    const updatedPrev = [...previousSentences, sentence.text].slice(-5);
+    setPreviousSentences(updatedPrev);
+
     // Phrase suivante immédiatement
-    await fetchNextSentence(sessionId);
+    await fetchNextSentence(sessionId, updatedPrev);
   };
 
   const finishSession = async () => {
@@ -329,6 +336,7 @@ export default function PracticePage() {
             localStorage.removeItem(STORAGE_KEY);
             setPhase("setup"); setSessionId(null); setSentence(null);
             setSessionStats({ totalSentences: 0, totalWords: 0, correctWords: 0, totalXp: 0 });
+            setPreviousSentences([]);
           }} className="px-6 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition">
             🔄 Nouvelle session
           </button>

@@ -1,198 +1,816 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { useUser } from "@clerk/nextjs";
-import { Mascot } from "@/components/Mascot";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
+import { levelToColor, levelToEmoji, levelToLabel } from "@/lib/scoring";
 
-interface Stats {
-  totalWords: number;
-  masteredWords: number;
-  totalSessions: number;
-  totalXp: number;
-  accuracy: number;
-  streak: { current: number; best: number };
-  recentSessions: Array<{
-    id: string;
-    startedAt: string;
-    totalSentences: number;
-    totalWords: number;
-    correctWords: number;
-    xpEarned: number;
-  }>;
-  wordsByLevel: Record<string, number>;
+// ─── Interfaces ───────────────────────────────────────────────
+
+interface Word {
+  id: string;
+  text: string;
+  level: number;
+  source: "MANUAL" | "CAPTURED";
+  sourceListId: string | null;
+  sourceList: { id: string; name: string } | null;
+  timesSeenInSentence: number;
+  timesCorrect: number;
+  timesWrong: number;
+  addedAt: string;
+  priorityScore: number;
 }
 
-export default function DashboardPage() {
-  const { user } = useUser();
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(true);
+interface Subscription {
+  listId: string;
+  lastSyncedAt: string;
+  createdAt: string;
+  list: {
+    id: string;
+    slug: string;
+    name: string;
+    isPublic: boolean;
+    isArchived: boolean;
+    itemCount: number;
+    ownerClerkId: string;
+  };
+}
 
-  useEffect(() => {
-    fetch("/api/stats")
-      .then((r) => r.json())
-      .then((data) => setStats(data))
-      .finally(() => setLoading(false));
+interface PublicList {
+  id: string;
+  slug: string;
+  name: string;
+  itemCount: number;
+  copyCount: number;
+  ownerClerkId: string;
+  isSubscribed: boolean;
+}
+
+interface WordListSummary {
+  id: string;
+  slug: string;
+  name: string;
+  isPublic: boolean;
+  isArchived: boolean;
+  copyCount: number;
+  itemCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────
+
+function originLabel(word: Word): { text: string; title: string } {
+  if (word.sourceList) return { text: `📋 ${word.sourceList.name}`, title: `Depuis la liste "${word.sourceList.name}"` };
+  if (word.source === "CAPTURED") return { text: "✨ Dictou", title: "Capturé pendant une dictée" };
+  return { text: "✏️ Manuel", title: "Ajouté manuellement" };
+}
+
+function successRate(word: Word): string {
+  if (word.timesSeenInSentence === 0) return "—";
+  return `${Math.round((word.timesCorrect / word.timesSeenInSentence) * 100)}%`;
+}
+
+// ─── Composant principal ──────────────────────────────────────
+
+export default function DashboardPage() {
+  const router = useRouter();
+
+  // Words state
+  const [words, setWords] = useState<Word[]>([]);
+  const [wordsLoading, setWordsLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [wordInput, setWordInput] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [wordFilter, setWordFilter] = useState<"all" | "0" | "1" | "2" | "3">("all");
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wordInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Subscriptions state
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [syncingListId, setSyncingListId] = useState<string | null>(null);
+
+  // Public lists search
+  const [publicLists, setPublicLists] = useState<PublicList[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchLoading, setSearchLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // My lists
+  const [myLists, setMyLists] = useState<WordListSummary[]>([]);
+  const [listsLoading, setListsLoading] = useState(true);
+  const [showNewListForm, setShowNewListForm] = useState(false);
+  const [newListName, setNewListName] = useState("");
+  const [newListWords, setNewListWords] = useState("");
+  const [creatingList, setCreatingList] = useState(false);
+
+  // ─── Load data ─────────────────────────────────────────────
+
+  const loadWords = useCallback(async () => {
+    const r = await fetch("/api/words");
+    const data = await r.json();
+    setWords(data.words || []);
+    setWordsLoading(false);
   }, []);
 
-  const greeting = () => {
-    const h = new Date().getHours();
-    if (h < 12) return "Bonjour";
-    if (h < 18) return "Bon après-midi";
-    return "Bonsoir";
+  const loadSubscriptions = useCallback(async () => {
+    const r = await fetch("/api/subscriptions");
+    if (r.ok) {
+      const data = await r.json();
+      setSubscriptions(data.subscriptions || []);
+    }
+  }, []);
+
+  const loadMyLists = useCallback(async () => {
+    const r = await fetch("/api/lists");
+    if (r.ok) {
+      const data = await r.json();
+      setMyLists(data.lists || []);
+    }
+    setListsLoading(false);
+  }, []);
+
+  const searchPublicLists = useCallback(async (q: string) => {
+    setSearchLoading(true);
+    try {
+      const r = await fetch(`/api/public/lists/search${q ? `?q=${encodeURIComponent(q)}` : ""}`);
+      if (r.ok) {
+        const data = await r.json();
+        setPublicLists(data.lists || []);
+      }
+    } finally {
+      setSearchLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadWords();
+    loadSubscriptions();
+    loadMyLists();
+    searchPublicLists("");
+
+    // Sync silencieux au chargement
+    fetch("/api/sync", { method: "POST" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.addedCount > 0) {
+          toast.success(`🔄 ${data.addedCount} nouveau${data.addedCount > 1 ? "x mots" : " mot"} depuis tes listes !`);
+          loadWords();
+        }
+      })
+      .catch(() => {});
+  }, [loadWords, loadSubscriptions, loadMyLists, searchPublicLists]);
+
+  useEffect(() => {
+    return () => {
+      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    };
+  }, []);
+
+  // Debounce search
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      searchPublicLists(searchQuery);
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [searchQuery, searchPublicLists]);
+
+  // ─── Words handlers ────────────────────────────────────────
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const r = await fetch("/api/sync", { method: "POST" });
+      const data = await r.json();
+      if (data.addedCount > 0) {
+        toast.success(`🔄 ${data.addedCount} nouveau${data.addedCount > 1 ? "x mots" : " mot"} ajouté${data.addedCount > 1 ? "s" : ""} !`);
+        await loadWords();
+      } else {
+        toast("Tout est à jour ✅", { icon: "🔄" });
+      }
+    } catch {
+      toast.error("Erreur lors de la synchronisation");
+    } finally {
+      setSyncing(false);
+    }
   };
+
+  const handleAddWords = async () => {
+    if (!wordInput.trim()) return;
+    const newWords = wordInput.split(/[,;\n]+/).map((w) => w.trim()).filter((w) => w.length > 0);
+    if (newWords.length === 0) return;
+    setAdding(true);
+    try {
+      const r = await fetch("/api/words", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ words: newWords }),
+      });
+      if (!r.ok) throw new Error("Erreur");
+      const data = await r.json();
+      setWordInput("");
+      await loadWords();
+      toast.success(`${data.words.length} mot${data.words.length > 1 ? "s" : ""} ajouté${data.words.length > 1 ? "s" : ""} !`);
+    } catch {
+      toast.error("Erreur lors de l'ajout");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleLevelChange = useCallback(async (wordId: string, currentLevel: number) => {
+    const newLevel = (currentLevel + 1) % 4;
+    setWords((prev) => prev.map((w) => w.id === wordId ? { ...w, level: newLevel } : w));
+    try {
+      const r = await fetch(`/api/words/${wordId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ level: newLevel }),
+      });
+      if (!r.ok) throw new Error();
+    } catch {
+      setWords((prev) => prev.map((w) => w.id === wordId ? { ...w, level: currentLevel } : w));
+      toast.error("Erreur lors du changement de niveau");
+    }
+  }, []);
+
+  const handleDeleteRequest = useCallback((id: string) => {
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    setPendingDeleteId(id);
+    deleteTimerRef.current = setTimeout(() => setPendingDeleteId(null), 5000);
+  }, []);
+
+  const handleDeleteCancel = useCallback(() => {
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    setPendingDeleteId(null);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(async (wordId: string, wordText: string) => {
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    setPendingDeleteId(null);
+    setWords((prev) => prev.filter((w) => w.id !== wordId));
+    toast.success(`"${wordText}" supprimé`);
+    try {
+      const r = await fetch(`/api/words?id=${wordId}`, { method: "DELETE" });
+      if (!r.ok) throw new Error();
+    } catch {
+      await loadWords();
+      toast.error("Erreur lors de la suppression");
+    }
+  }, [loadWords]);
+
+  // ─── Public list handlers ──────────────────────────────────
+
+  const handleSubscribe = async (list: PublicList) => {
+    try {
+      const r = await fetch(`/api/public/lists/${list.slug}/copy`, { method: "POST" });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "Erreur");
+      setPublicLists((prev) =>
+        prev.map((l) => l.id === list.id ? { ...l, isSubscribed: true } : l)
+      );
+      toast.success(`Abonné à "${list.name}" — ${data.addedCount} mot${data.addedCount !== 1 ? "s" : ""} ajouté${data.addedCount !== 1 ? "s" : ""} !`);
+      await loadWords();
+      await loadSubscriptions();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur lors de l'abonnement");
+    }
+  };
+
+  // ─── Subscriptions handlers ────────────────────────────────
+
+  const handleSyncSubscription = async (listId: string) => {
+    setSyncingListId(listId);
+    try {
+      const r = await fetch("/api/sync", { method: "POST" });
+      const data = await r.json();
+      if (data.addedCount > 0) {
+        toast.success(`🔄 ${data.addedCount} nouveau${data.addedCount > 1 ? "x mots" : " mot"} ajouté${data.addedCount > 1 ? "s" : ""} !`);
+        await loadWords();
+      } else {
+        toast("Tout est à jour ✅", { icon: "🔄" });
+      }
+    } catch {
+      toast.error("Erreur lors de la synchronisation");
+    } finally {
+      setSyncingListId(null);
+    }
+  };
+
+  const handleUnsubscribe = async (listId: string, listName: string) => {
+    if (!confirm(`Se désabonner de "${listName}" ? Les mots déjà copiés restent dans ta liste.`)) return;
+    try {
+      const r = await fetch(`/api/subscriptions/${listId}`, { method: "DELETE" });
+      if (!r.ok) throw new Error();
+      toast.success(`Désabonné de "${listName}"`);
+      await loadSubscriptions();
+    } catch {
+      toast.error("Erreur lors du désabonnement");
+    }
+  };
+
+  // ─── My lists handlers ─────────────────────────────────────
+
+  const handleCreateList = async () => {
+    if (!newListName.trim()) return;
+    setCreatingList(true);
+    try {
+      const words = newListWords.split(/[,;\n]+/).map((w) => w.trim()).filter((w) => w.length > 0);
+      const r = await fetch("/api/lists", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newListName.trim(), words }),
+      });
+      if (!r.ok) {
+        const err = await r.json();
+        throw new Error(err.error || "Erreur");
+      }
+      const data = await r.json();
+      toast.success(`Liste "${data.list.name}" créée !`);
+      setNewListName("");
+      setNewListWords("");
+      setShowNewListForm(false);
+      router.push(`/listes/${data.list.id}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur lors de la création");
+    } finally {
+      setCreatingList(false);
+    }
+  };
+
+  const handleShareList = (slug: string) => {
+    const url = `${window.location.origin}/liste/${slug}`;
+    navigator.clipboard.writeText(url).then(() => toast.success("Lien copié !"));
+  };
+
+  // ─── Computed ──────────────────────────────────────────────
+
+  const wordCounts = {
+    all: words.length,
+    "0": words.filter((w) => w.level === 0).length,
+    "1": words.filter((w) => w.level === 1).length,
+    "2": words.filter((w) => w.level === 2).length,
+    "3": words.filter((w) => w.level === 3).length,
+  };
+
+  const filteredWords =
+    wordFilter === "all" ? words : words.filter((w) => w.level.toString() === wordFilter);
+
+  // ─── Render ────────────────────────────────────────────────
 
   return (
     <div className="space-y-8">
-      {/* Welcome */}
+
+      {/* ══════════════════════════════════════════════════
+          1. HERO CARD
+      ══════════════════════════════════════════════════ */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative bg-gradient-to-r from-purple-600 to-blue-500 rounded-3xl p-5 sm:p-8 text-white shadow-lg overflow-hidden"
+        className="bg-gradient-to-r from-purple-600 to-indigo-500 rounded-3xl p-6 sm:p-8 text-white shadow-lg"
       >
-        <p className="text-purple-200 text-base sm:text-lg">
-          {greeting()},{" "}
-          <span className="font-bold text-white">
-            {user?.firstName || "champion"} !
+        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+          <span className="bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
+            Dictou
           </span>
-        </p>
-        <h1 className="text-2xl sm:text-3xl font-bold mt-1 pr-20 sm:pr-28">
-          {stats?.streak.current && stats.streak.current > 0
-            ? `🔥 ${stats.streak.current} jour${stats.streak.current > 1 ? "s" : ""} de suite !`
-            : "Prêt à t'entraîner ?"}
         </h1>
-        <p className="text-purple-200 mt-2">
-          {stats?.totalXp || 0} ⭐ XP total
-        </p>
-        <div className="absolute right-4 sm:right-6 bottom-0 opacity-90 pointer-events-none">
-          <Mascot size={80} mood={stats?.streak.current && stats.streak.current >= 3 ? "excited" : "happy"} />
+        <p className="text-purple-200 mt-1 text-base sm:text-lg">Ta dictée intelligente</p>
+
+        {/* Métriques */}
+        <div className="flex flex-wrap gap-4 mt-4 text-sm font-medium">
+          <span className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1">
+            <span>⭐</span>
+            <span>{wordCounts["3"]} maîtrisés</span>
+          </span>
+          <span className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1">
+            <span>🟠</span>
+            <span>{wordCounts["1"]} en cours</span>
+          </span>
+          <span className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1">
+            <span>🔴</span>
+            <span>{wordCounts["0"]} nouveaux</span>
+          </span>
         </div>
+
         <Link
           href="/practice"
-          className="inline-block mt-4 px-5 py-2.5 sm:px-6 sm:py-3 bg-white text-purple-700 font-bold rounded-xl hover:scale-105 transition shadow"
+          className="inline-block mt-5 px-6 py-3 bg-white text-purple-700 font-bold rounded-xl hover:scale-105 transition shadow-md"
         >
           🎯 Lancer une dictée
         </Link>
       </motion.div>
 
-      {/* Stats cards */}
-      {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl p-5 h-28 animate-pulse" />
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            {
-              icon: "📚",
-              label: "Mots dans la liste",
-              value: stats?.totalWords || 0,
-              color: "text-blue-600",
-              bg: "bg-blue-50",
-            },
-            {
-              icon: "⭐",
-              label: "Mots maîtrisés",
-              value: stats?.masteredWords || 0,
-              color: "text-yellow-600",
-              bg: "bg-yellow-50",
-            },
-            {
-              icon: "🎯",
-              label: "Sessions",
-              value: stats?.totalSessions || 0,
-              color: "text-green-600",
-              bg: "bg-green-50",
-            },
-            {
-              icon: "📈",
-              label: "Précision",
-              value: `${stats?.accuracy || 0}%`,
-              color: "text-purple-600",
-              bg: "bg-purple-50",
-            },
-          ].map((card, i) => (
-            <motion.div
-              key={card.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className={`${card.bg} rounded-2xl p-4 sm:p-5 border border-white`}
-            >
-              <div className="text-2xl sm:text-3xl mb-1 sm:mb-2">{card.icon}</div>
-              <div className={`text-xl sm:text-2xl font-bold ${card.color}`}>{card.value}</div>
-              <div className="text-xs text-gray-500 mt-1 leading-tight">{card.label}</div>
-            </motion.div>
-          ))}
-        </div>
-      )}
+      {/* ══════════════════════════════════════════════════
+          2. DÉCOUVRIR DES LISTES
+      ══════════════════════════════════════════════════ */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4"
+      >
+        <h2 className="text-lg font-bold text-gray-900">🔍 Découvrir des listes</h2>
 
-      {/* Word levels breakdown */}
-      {stats && stats.totalWords > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-        >
-          <h2 className="font-bold text-gray-800 mb-4">
-            Progression de tes mots
-          </h2>
-          <div className="space-y-3">
-            {[
-              { level: "0", label: "Nouveaux", emoji: "🔴", color: "bg-red-400" },
-              { level: "1", label: "En apprentissage", emoji: "🟠", color: "bg-orange-400" },
-              { level: "2", label: "Connus", emoji: "🔵", color: "bg-blue-400" },
-              { level: "3", label: "Maîtrisés", emoji: "⭐", color: "bg-yellow-400" },
-            ].map(({ level, label, emoji, color }) => {
-              const count = stats.wordsByLevel[level] || 0;
-              const pct = stats.totalWords > 0 ? (count / stats.totalWords) * 100 : 0;
-              return (
-                <div key={level} className="flex items-center gap-3">
-                  <span className="text-base w-5">{emoji}</span>
-                  <span className="text-sm text-gray-600 w-24 sm:w-36">{label}</span>
-                  <div className="flex-1 bg-gray-100 rounded-full h-3">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${pct}%` }}
-                      transition={{ duration: 0.8, delay: 0.4 }}
-                      className={`${color} h-3 rounded-full`}
-                    />
-                  </div>
-                  <span className="text-sm font-bold text-gray-700 w-8 text-right">
-                    {count}
-                  </span>
+        {/* Barre de recherche */}
+        <div className="relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+          </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Chercher une liste publique..."
+            className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">×</button>
+          )}
+        </div>
+
+        {/* Résultats */}
+        {searchLoading ? (
+          <div className="space-y-2">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />
+            ))}
+          </div>
+        ) : publicLists.length === 0 ? (
+          <p className="text-gray-400 text-sm text-center py-4">
+            {searchQuery ? `Aucune liste trouvée pour "${searchQuery}"` : "Aucune liste publique disponible"}
+          </p>
+        ) : (
+          <ul className="divide-y divide-gray-50">
+            {publicLists.map((list) => (
+              <li key={list.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-800 truncate">{list.name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {list.itemCount} mot{list.itemCount !== 1 ? "s" : ""} · {list.copyCount} copie{list.copyCount !== 1 ? "s" : ""}
+                  </p>
                 </div>
-              );
-            })}
-          </div>
-        </motion.div>
-      )}
+                {list.isSubscribed ? (
+                  <span className="shrink-0 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-xl">
+                    Abonné ✓
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => handleSubscribe(list)}
+                    className="shrink-0 px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition"
+                  >
+                    S'abonner
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </motion.section>
 
-      {/* Quick actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Link href="/words" className="group">
-          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md hover:border-purple-200 transition">
-            <div className="text-3xl mb-2">📚</div>
-            <h3 className="font-bold text-gray-800">Gérer mes mots</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              Ajouter, voir et supprimer les mots à apprendre
+      {/* ══════════════════════════════════════════════════
+          3. MES MOTS
+      ══════════════════════════════════════════════════ */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="space-y-4"
+      >
+        {/* En-tête */}
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-lg font-bold text-gray-900">
+            📚 Mes mots ({words.length})
+          </h2>
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 disabled:opacity-50 transition"
+          >
+            <span className={syncing ? "animate-spin" : ""}>🔄</span>
+            <span className="hidden sm:inline">{syncing ? "Sync…" : "Synchroniser"}</span>
+          </button>
+        </div>
+
+        {/* Formulaire ajout compact */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <div className="flex gap-2">
+            <textarea
+              ref={wordInputRef}
+              value={wordInput}
+              onChange={(e) => setWordInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && e.metaKey) handleAddWords(); }}
+              placeholder="Ajouter des mots : grenouille, papillon..."
+              className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none"
+              rows={2}
+            />
+            <button
+              onClick={handleAddWords}
+              disabled={adding || !wordInput.trim()}
+              className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm self-start"
+            >
+              {adding ? "⏳" : "+ Ajouter"}
+            </button>
+          </div>
+        </div>
+
+        {/* Filtres */}
+        <div className="flex gap-2 flex-wrap">
+          {([
+            { key: "all", label: "Tous", emoji: "📋" },
+            { key: "0", label: "Nouveaux", emoji: "🔴" },
+            { key: "1", label: "En cours", emoji: "🟠" },
+            { key: "2", label: "Connus", emoji: "🔵" },
+            { key: "3", label: "Maîtrisés", emoji: "⭐" },
+          ] as const).map(({ key, label, emoji }) => (
+            <button
+              key={key}
+              onClick={() => setWordFilter(key)}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
+                wordFilter === key ? "bg-purple-600 text-white" : "bg-white text-gray-600 border border-gray-200 hover:border-purple-300"
+              }`}
+            >
+              {emoji} {label} ({wordCounts[key]})
+            </button>
+          ))}
+        </div>
+
+        {/* Tableau des mots */}
+        {wordsLoading ? (
+          <div className="space-y-2">
+            {[...Array(5)].map((_, i) => <div key={i} className="bg-white rounded-xl h-12 animate-pulse" />)}
+          </div>
+        ) : filteredWords.length === 0 ? (
+          <div className="text-center py-12 text-gray-400 bg-white rounded-2xl border border-gray-100">
+            <div className="text-4xl mb-2">📭</div>
+            <p className="font-medium">
+              {words.length === 0 ? "Ta liste est vide ! Ajoute des mots ci-dessus." : "Aucun mot dans cette catégorie."}
             </p>
           </div>
-        </Link>
-        <Link href="/stats" className="group">
-          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md hover:border-purple-200 transition">
-            <div className="text-3xl mb-2">📊</div>
-            <h3 className="font-bold text-gray-800">Voir mes statistiques</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              Historique des sessions et progression détaillée
-            </p>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 text-xs font-medium text-gray-400">
+              <span className="flex-1">Mot</span>
+              <span className="hidden md:block w-32">Origine</span>
+              <span className="w-24 text-center">Niveau <span className="font-normal opacity-70">(cliquable)</span></span>
+              <span className="w-14 text-right">Réussite</span>
+              <span className="w-10" />
+            </div>
+            <ul>
+              <AnimatePresence initial={false}>
+                {filteredWords.map((word) => {
+                  const isPending = pendingDeleteId === word.id;
+                  const origin = originLabel(word);
+                  return (
+                    <motion.li
+                      key={word.id}
+                      layout
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20, transition: { duration: 0.2 } }}
+                      className={`group flex items-center gap-2 px-3 py-3 border-b border-gray-100 last:border-0 transition-colors ${
+                        isPending ? "bg-red-50" : "hover:bg-gray-50"
+                      }`}
+                    >
+                      <span className="flex-1 font-semibold text-gray-800 capitalize text-sm truncate min-w-0">
+                        {word.text}
+                      </span>
+                      <span className="hidden md:block w-32 shrink-0 text-xs text-gray-500 truncate" title={origin.title}>
+                        {origin.text}
+                      </span>
+                      <button
+                        onClick={() => handleLevelChange(word.id, word.level)}
+                        title="Cliquer pour changer le niveau"
+                        className={`hidden sm:inline-flex w-24 shrink-0 items-center justify-center text-xs px-2 py-0.5 rounded-full border font-medium transition hover:opacity-75 active:scale-95 ${levelToColor(word.level)}`}
+                      >
+                        {levelToEmoji(word.level)} {levelToLabel(word.level)}
+                      </button>
+                      <button
+                        onClick={() => handleLevelChange(word.id, word.level)}
+                        className="sm:hidden text-base shrink-0 active:scale-90 transition"
+                        title={`Niveau: ${levelToLabel(word.level)} — cliquer pour changer`}
+                      >
+                        {levelToEmoji(word.level)}
+                      </button>
+                      <span className="w-12 sm:w-14 text-right text-xs text-gray-500 shrink-0">
+                        {successRate(word)}
+                      </span>
+                      <div className="w-auto shrink-0 flex items-center gap-1">
+                        {isPending ? (
+                          <>
+                            <button onClick={handleDeleteCancel} className="text-gray-500 text-xs underline px-1 py-1 hover:text-gray-700 transition">
+                              Annuler
+                            </button>
+                            <button onClick={() => handleDeleteConfirm(word.id, word.text)} className="bg-red-500 text-white text-xs px-3 py-1 rounded-lg hover:bg-red-600 transition font-medium">
+                              Supprimer
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => handleDeleteRequest(word.id)}
+                            className="text-gray-300 group-hover:text-gray-400 active:text-red-400 transition p-1 rounded hover:bg-gray-100"
+                            title={`Supprimer "${word.text}"`}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4">
+                              <path fillRule="evenodd" d="M5 3.25V4H2.75a.75.75 0 0 0 0 1.5h.3l.815 8.15A1.5 1.5 0 0 0 5.357 15h5.285a1.5 1.5 0 0 0 1.493-1.35l.815-8.15h.3a.75.75 0 0 0 0-1.5H11v-.75A2.25 2.25 0 0 0 8.75 1h-1.5A2.25 2.25 0 0 0 5 3.25Zm2.25-.75a.75.75 0 0 0-.75.75V4h3v-.75a.75.75 0 0 0-.75-.75h-1.5ZM6.05 6a.75.75 0 0 1 .787.713l.275 5.5a.75.75 0 0 1-1.498.075l-.275-5.5A.75.75 0 0 1 6.05 6Zm3.9 0a.75.75 0 0 1 .712.787l-.275 5.5a.75.75 0 0 1-1.498-.075l.275-5.5a.75.75 0 0 1 .786-.712Z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </motion.li>
+                  );
+                })}
+              </AnimatePresence>
+            </ul>
           </div>
-        </Link>
-      </div>
+        )}
+        {words.length > 0 && (
+          <p className="text-xs text-gray-400 text-center">
+            Cliquer sur le badge de niveau pour le modifier manuellement
+          </p>
+        )}
+      </motion.section>
+
+      {/* ══════════════════════════════════════════════════
+          4. MES LISTES
+      ══════════════════════════════════════════════════ */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="space-y-4"
+      >
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-lg font-bold text-gray-900">
+            📋 Mes listes ({myLists.length})
+          </h2>
+          <button
+            onClick={() => setShowNewListForm((v) => !v)}
+            className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition shadow-sm text-sm"
+          >
+            + Nouvelle liste
+          </button>
+        </div>
+
+        {/* Formulaire nouvelle liste */}
+        <AnimatePresence>
+          {showNewListForm && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="bg-white rounded-2xl border border-purple-100 shadow-sm p-5 space-y-4">
+                <h3 className="font-semibold text-gray-800">Nouvelle liste</h3>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nom <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    autoFocus
+                    type="text"
+                    value={newListName}
+                    onChange={(e) => setNewListName(e.target.value)}
+                    maxLength={60}
+                    placeholder="Ex : Mots CE2 difficiles"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
+                    onKeyDown={(e) => { if (e.key === "Enter" && e.metaKey) handleCreateList(); }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Mots initiaux <span className="text-gray-400">(optionnel)</span>
+                  </label>
+                  <textarea
+                    value={newListWords}
+                    onChange={(e) => setNewListWords(e.target.value)}
+                    placeholder="grenouille, papillon, anniversaire..."
+                    rows={2}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleCreateList}
+                    disabled={creatingList || !newListName.trim()}
+                    className="px-5 py-2 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm"
+                  >
+                    {creatingList ? "Création…" : "Créer"}
+                  </button>
+                  <button
+                    onClick={() => { setShowNewListForm(false); setNewListName(""); setNewListWords(""); }}
+                    className="px-5 py-2 text-gray-600 font-medium rounded-xl hover:bg-gray-100 transition text-sm"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Cards de mes listes */}
+        {listsLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl h-28 animate-pulse" />
+            ))}
+          </div>
+        ) : myLists.length === 0 ? (
+          <div className="text-center py-10 text-gray-400 bg-white rounded-2xl border border-gray-100">
+            <div className="text-4xl mb-2">📋</div>
+            <p className="font-medium text-sm">Tu n'as pas encore de liste.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <AnimatePresence>
+              {myLists.map((list) => (
+                <motion.div
+                  key={list.id}
+                  layout
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition"
+                >
+                  <div className="font-semibold text-gray-800 truncate mb-2">{list.name}</div>
+                  <div className="flex items-center gap-3 text-xs text-gray-500 mb-4">
+                    <span>📝 {list.itemCount} mot{list.itemCount !== 1 ? "s" : ""}</span>
+                    {list.copyCount > 0 && (
+                      <span className="text-purple-600">📋 {list.copyCount} copie{list.copyCount !== 1 ? "s" : ""}</span>
+                    )}
+                    {list.isPublic && <span className="text-green-600">🌐 Publique</span>}
+                  </div>
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/listes/${list.id}`}
+                      className="flex-1 text-center py-1.5 text-sm font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-xl transition"
+                    >
+                      Gérer
+                    </Link>
+                    <button
+                      onClick={() => handleShareList(list.slug)}
+                      className="flex-1 text-center py-1.5 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-xl transition"
+                    >
+                      🔗 Partager
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* Mes abonnements */}
+        {subscriptions.length > 0 && (
+          <div className="space-y-3 pt-2">
+            <h3 className="font-semibold text-gray-700 text-sm">🔔 Mes abonnements</h3>
+            <div className="space-y-2">
+              {subscriptions.map((sub) => (
+                <div key={sub.listId} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-4">
+                  <div className="flex-1 min-w-0">
+                    <a
+                      href={`/liste/${sub.list.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-gray-800 hover:text-purple-700 transition truncate block text-sm"
+                    >
+                      {sub.list.name}
+                    </a>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {sub.list.itemCount} mot{sub.list.itemCount !== 1 ? "s" : ""} · synchro le{" "}
+                      {new Date(sub.lastSyncedAt).toLocaleDateString("fr-FR")}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => handleSyncSubscription(sub.listId)}
+                      disabled={syncingListId === sub.listId}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-xl transition disabled:opacity-50"
+                    >
+                      <span className={syncingListId === sub.listId ? "animate-spin" : ""}>🔄</span>
+                      <span className="hidden sm:inline">Sync</span>
+                    </button>
+                    <button
+                      onClick={() => handleUnsubscribe(sub.listId, sub.list.name)}
+                      className="px-3 py-1.5 text-xs text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-xl transition"
+                    >
+                      Désabonner
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </motion.section>
+
     </div>
   );
 }

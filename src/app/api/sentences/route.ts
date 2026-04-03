@@ -11,9 +11,10 @@ export async function POST(req: NextRequest) {
   if (!clerkId) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
 
   const body = await req.json();
-  const { sessionId, level } = body as {
+  const { sessionId, level, previousSentences } = body as {
     sessionId: string;
     level?: "cp" | "ce1" | "ce2" | "cm1" | "cm2";
+    previousSentences?: string[];
   };
 
   if (!sessionId) {
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest) {
     targetWords: priorityWords.map((w) => w.text),
     optionalWords: optionalWords.map((w) => w.text),
     level: level || "ce1",
+    previousSentences: previousSentences?.slice(0, 5) || [],
   });
 
   // ─── Extraire TOUS les mots significatifs de la phrase ───
