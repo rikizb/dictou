@@ -43,7 +43,17 @@
       "Bash(curl -s -X POST http://localhost:3000/api/sentences -H \"Content-Type: application/json\" -d '{\"\"\"\"sessionId\"\"\"\":\"\"\"\"test\"\"\"\"}')",
       "Bash(jobs -l)",
       "Bash(cat /private/tmp/claude-501/-Users-elisalafaye-Library-CloudStorage-GoogleDrive-aymeric-yatori-fr-Drive-partag-s-PERSO-B-renger-IA-OS-Dicteo/ef753938-32d3-4322-816f-6652c54deec0/tasks/*.output)",
-      "Bash(node -e \"const l = require\\('@clerk/localizations'\\); console.log\\(Object.keys\\(l\\).filter\\(k => k.includes\\('fr'\\)\\)\\)\")"
+      "Bash(node -e \"const l = require\\('@clerk/localizations'\\); console.log\\(Object.keys\\(l\\).filter\\(k => k.includes\\('fr'\\)\\)\\)\")",
+      "Bash(npx vercel:*)",
+      "Bash(kill %1)",
+      "Bash(dig CNAME clerk.dictou.com +short)",
+      "Bash(dig CNAME accounts.dictou.com +short)",
+      "Bash(dig CNAME clkmail.dictou.com +short)",
+      "Bash(dig CNAME clk._domainkey.dictou.com +short)",
+      "Bash(dig CNAME clk2._domainkey.dictou.com +short)",
+      "Bash(curl -s -X POST https://www.dictou.com/api/sentences/guest -H 'Content-Type: application/json' -d '{\"words\":[\"grenouille\",\"papillon\",\"château\"],\"level\":\"cp\",\"previousSentences\":[]}')",
+      "Bash(curl -s -X POST https://www.dictou.com/api/sessions -H 'Content-Type: application/json' -d '{}')",
+      "Bash(curl -s -A 'Mozilla/5.0 \\(iPhone; CPU iPhone OS 17_0 like Mac OS X\\) AppleWebKit/605.1.15 \\(KHTML, like Gecko\\) Version/17.0 Mobile/15E148 Safari/604.1' https://www.dictou.com/)"
     ]
   }
 }

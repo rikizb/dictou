@@ -41,6 +41,7 @@ RÈGLES ABSOLUES :
 4. Si un mot imposé est un nom commun, construis une scène concrète autour de lui
 5. Jamais de répétition du même mot ou structure bizarre
 6. La phrase doit se lire à voix haute sans hésitation
+7. INTERDIT ABSOLU : aucun gros mot, insulte, terme vulgaire, violence, contenu effrayant ou inapproprié pour un enfant de 6 à 11 ans. Si un mot fourni est grossier, remplace-le par un mot neutre équivalent.
 
 EXEMPLES INTERDITS (phrases qui n'ont pas de sens) :
 - "Le jouet ci est le sien de ma sœur." ❌
@@ -73,7 +74,7 @@ Réponds UNIQUEMENT avec ce JSON (rien d'autre) :
 {"sentence": "Ta phrase ici."}`;
 
   const response = await client.messages.create({
-    model: "claude-sonnet-4-5",
+    model: "claude-sonnet-4-6",
     max_tokens: 200,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
@@ -110,7 +111,7 @@ async function retryWithMissingWords(
   previousSentences: string[] = []
 ): Promise<GeneratedSentence> {
   const response = await client.messages.create({
-    model: "claude-sonnet-4-5",
+    model: "claude-sonnet-4-6",
     max_tokens: 200,
     system: systemPrompt,
     messages: [{

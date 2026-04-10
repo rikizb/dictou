@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import Link from "next/link";
@@ -7,6 +7,14 @@ import Link from "next/link";
 const GUEST_WORDS_KEY = "guest_words";
 const GUEST_PREV_KEY = "guest_prev_sentences";
 const LEVEL_KEY = "dictou_level";
+
+const DEFAULT_WORDS: Record<string, string[]> = {
+  cp:  ["chat", "maison", "école", "soleil", "livre"],
+  ce1: ["jardin", "famille", "matin", "classe", "ami"],
+  ce2: ["forêt", "voyage", "lumière", "histoire", "secret"],
+  cm1: ["aventure", "mystère", "courage", "planète", "liberté"],
+  cm2: ["conquête", "harmonie", "découverte", "mémoire", "silence"],
+};
 
 type WordState = "pending" | "correct";
 type Level = "cp" | "ce1" | "ce2" | "cm1" | "cm2";
@@ -35,19 +43,40 @@ export default function JouerPage() {
   const [previousSentences, setPreviousSentences] = useState<string[]>([]);
   const [totalDone, setTotalDone] = useState(0);
 
+  const hasAutoStarted = useRef(false);
+  const autoStartWords = useRef<GuestWord[] | null>(null);
+
   // Charger les mots et le niveau depuis localStorage
   useEffect(() => {
+    let loadedWords: GuestWord[] = [];
+    let loadedLevel: Level = "cp";
     try {
       const raw = localStorage.getItem(GUEST_WORDS_KEY);
-      if (raw) setGuestWords(JSON.parse(raw));
+      if (raw) loadedWords = JSON.parse(raw);
       const prev = localStorage.getItem(GUEST_PREV_KEY);
       if (prev) setPreviousSentences(JSON.parse(prev));
       const savedLevel = localStorage.getItem(LEVEL_KEY);
-      if (savedLevel) setLevel(savedLevel as Level);
+      if (savedLevel) loadedLevel = savedLevel as Level;
     } catch {
       // ignore
     }
-  }, []);
+    setLevel(loadedLevel);
+    // Si aucun mot sauvegardé, pré-remplir avec les mots par défaut
+    if (loadedWords.length === 0) {
+      const defaults = DEFAULT_WORDS[loadedLevel] || DEFAULT_WORDS.cp;
+      loadedWords = defaults.map(text => ({ text }));
+    }
+    setGuestWords(loadedWords);
+    autoStartWords.current = loadedWords;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-lancer dès que les mots sont chargés
+  useEffect(() => {
+    if (!hasAutoStarted.current && guestWords.length >= 2 && autoStartWords.current !== null) {
+      hasAutoStarted.current = true;
+      fetchSentence();
+    }
+  }, [guestWords]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sauvegarder les mots dans localStorage
   useEffect(() => {

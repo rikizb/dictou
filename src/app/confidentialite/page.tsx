@@ -34,7 +34,7 @@ export default function ConfidentialitePage() {
           <h2 className="text-xl font-bold text-gray-800">1. Qui sommes-nous ?</h2>
           <p>
             Dictou (<strong>www.dictou.com</strong>) est un service d&apos;aide à la dictée pour enfants
-            édité par <strong>[PRÉNOM NOM]</strong>. En cas de questions relatives à vos données :{" "}
+            édité par <strong>Aymeric Bérenger (Les Evabres SAS)</strong>. En cas de questions relatives à vos données :{" "}
             <a href="mailto:contact@dictou.com" className="text-purple-600 underline">contact@dictou.com</a>
           </p>
         </section>

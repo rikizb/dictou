@@ -24,12 +24,12 @@ export default function MentionsLegalesPage() {
           <h2 className="text-xl font-bold text-gray-800">1. Éditeur du site</h2>
           <p>
             Le site <strong>www.dictou.com</strong> est édité par :<br />
-            <strong>[PRÉNOM NOM]</strong><br />
-            Adresse : <strong>[ADRESSE COMPLÈTE]</strong><br />
+            <strong>Aymeric Bérenger (Les Evabres SAS)</strong><br />
+            Adresse : <strong>87 rue Carnot, 92300 Levallois-Perret</strong><br />
             Email : <strong>contact@dictou.com</strong>
           </p>
           <p>
-            Directeur de la publication : <strong>[PRÉNOM NOM]</strong>
+            Directeur de la publication : <strong>Aymeric Bérenger (Les Evabres SAS)</strong>
           </p>
         </section>
 

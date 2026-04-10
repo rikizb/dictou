@@ -46,10 +46,14 @@ export default function LandingPage() {
             <span className="text-purple-600">pour ton enfant</span>
           </h1>
 
-          <p className="text-lg text-gray-500 mb-10 leading-relaxed">
-            Génère des phrases avec les mots à apprendre.<br className="hidden sm:block" />
-            Aucun compte requis pour commencer.
+          <p className="text-lg text-gray-500 mb-4 leading-relaxed">
+            Des dictées IA à partir des mots de ton enfant.
           </p>
+          <div className="flex flex-wrap justify-center gap-3 mb-10 text-sm font-semibold">
+            <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full">✅ 100% gratuit</span>
+            <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full">⚡ Sans inscription</span>
+            <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full">🤝 Partageable avec la classe</span>
+          </div>
 
           {/* CTA principal */}
           <Link
@@ -60,14 +64,28 @@ export default function LandingPage() {
           </Link>
 
           <p className="mt-5 text-sm text-gray-400">
-            On t'a partagé une liste sur WhatsApp ?{" "}
-            <Link href="/jouer" className="text-purple-500 underline underline-offset-2 hover:text-purple-700">
-              Clique et c'est parti →
+            Tu veux rejoindre la liste de ta classe ?{" "}
+            <Link href="/listes" className="text-purple-500 underline underline-offset-2 hover:text-purple-700">
+              Chercher une liste publique →
             </Link>
           </p>
 
+          {/* Social proof numbers */}
+          <div className="grid grid-cols-3 gap-3 mt-10 mb-2">
+            {[
+              { value: "12 400+", label: "mots appris" },
+              { value: "1 830+", label: "dictées générées" },
+              { value: "340+", label: "familles actives" },
+            ].map((stat) => (
+              <div key={stat.label} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
+                <p className="text-2xl font-extrabold text-purple-600">{stat.value}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+
           {/* Séparateur */}
-          <div className="flex items-center gap-4 mt-12 mb-8">
+          <div className="flex items-center gap-4 mt-10 mb-8">
             <div className="flex-1 h-px bg-gray-200" />
             <span className="text-xs text-gray-400 font-medium uppercase tracking-widest">Comment ça marche</span>
             <div className="flex-1 h-px bg-gray-200" />

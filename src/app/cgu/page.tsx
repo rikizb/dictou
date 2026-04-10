@@ -30,7 +30,7 @@ export default function CguPage() {
             à partir des mots à apprendre, grâce à l&apos;intelligence artificielle.
           </p>
           <p>
-            Le service est édité par <strong>[PRÉNOM NOM]</strong> —{" "}
+            Le service est édité par <strong>Aymeric Bérenger (Les Evabres SAS)</strong> —{" "}
             <a href="mailto:contact@dictou.com" className="text-purple-600 underline">contact@dictou.com</a>
           </p>
         </section>
