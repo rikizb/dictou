@@ -6,6 +6,7 @@ import Link from "next/link";
 
 const GUEST_WORDS_KEY = "guest_words";
 const GUEST_PREV_KEY = "guest_prev_sentences";
+const LEVEL_KEY = "dictou_level";
 
 type WordState = "pending" | "correct";
 type Level = "cp" | "ce1" | "ce2" | "cm1" | "cm2";
@@ -34,13 +35,15 @@ export default function JouerPage() {
   const [previousSentences, setPreviousSentences] = useState<string[]>([]);
   const [totalDone, setTotalDone] = useState(0);
 
-  // Charger les mots depuis localStorage
+  // Charger les mots et le niveau depuis localStorage
   useEffect(() => {
     try {
       const raw = localStorage.getItem(GUEST_WORDS_KEY);
       if (raw) setGuestWords(JSON.parse(raw));
       const prev = localStorage.getItem(GUEST_PREV_KEY);
       if (prev) setPreviousSentences(JSON.parse(prev));
+      const savedLevel = localStorage.getItem(LEVEL_KEY);
+      if (savedLevel) setLevel(savedLevel as Level);
     } catch {
       // ignore
     }
@@ -188,7 +191,7 @@ export default function JouerPage() {
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Niveau scolaire</label>
                   <select
                     value={level}
-                    onChange={(e) => setLevel(e.target.value as Level)}
+                    onChange={(e) => { setLevel(e.target.value as Level); localStorage.setItem(LEVEL_KEY, e.target.value); }}
                     className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white"
                   >
                     {LEVELS.map(({ key, label }) => (
@@ -286,7 +289,7 @@ export default function JouerPage() {
               {/* Barre session */}
               <div className="flex items-center justify-between text-sm text-gray-500">
                 <span>Phrase #{totalDone + 1}</span>
-                <select value={level} onChange={(e) => setLevel(e.target.value as Level)}
+                <select value={level} onChange={(e) => { setLevel(e.target.value as Level); localStorage.setItem(LEVEL_KEY, e.target.value); }}
                   className="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-500 bg-white">
                   {LEVELS.map(({key, label}) => <option key={key} value={key}>{label}</option>)}
                 </select>

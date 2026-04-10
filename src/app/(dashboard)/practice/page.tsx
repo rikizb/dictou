@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import confetti from "canvas-confetti";
@@ -9,6 +9,7 @@ import { levelToEmoji } from "@/lib/scoring";
 import { Mascot } from "@/components/Mascot";
 
 const STORAGE_KEY = "dictou_active_session";
+const LEVEL_KEY = "dictou_level";
 
 type Level = "cp" | "ce1" | "ce2" | "cm1" | "cm2";
 type WordState = "pending" | "correct" | "wrong";
@@ -52,11 +53,20 @@ function loadPersistedSession() {
   }
 }
 
+function loadLevel(): Level {
+  try {
+    const l = localStorage.getItem(LEVEL_KEY);
+    if (l) return l as Level;
+  } catch {}
+  return "cp";
+}
+
 export default function PracticePage() {
   const persisted = typeof window !== "undefined" ? loadPersistedSession() : null;
 
-  const [phase, setPhase] = useState<Phase>(persisted?.phase ?? "setup");
+  const [phase, setPhase] = useState<Phase>(persisted?.phase ?? "loading");
   const [level, setLevel] = useState<Level>(persisted?.level ?? "cp");
+  const hasAutoStarted = useRef(false);
   const [sessionId, setSessionId] = useState<string | null>(persisted?.sessionId ?? null);
   const [sentence, setSentence] = useState<Sentence | null>(persisted?.sentence ?? null);
   const [wordStates, setWordStates] = useState<Record<string, WordState>>(persisted?.wordStates ?? {});
@@ -66,19 +76,37 @@ export default function PracticePage() {
   const [previousSentences, setPreviousSentences] = useState<string[]>(persisted?.previousSentences ?? []);
   const [mascotMood, setMascotMood] = useState<"happy" | "excited" | "thinking" | "celebrate">("happy");
 
+  // Lecture du niveau depuis localStorage au montage (sauf session persistée)
+  useEffect(() => {
+    if (!persisted) {
+      const savedLevel = loadLevel();
+      setLevel(savedLevel);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Sauvegarde la session dans localStorage à chaque changement d'état pertinent
   useEffect(() => {
     if (phase === "dictating" && sessionId && sentence) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         phase, level, sessionId, sentence, wordStates, sessionStats, previousSentences,
       }));
-    } else if (phase === "setup" || phase === "finished") {
+    } else if (phase === "finished") {
       localStorage.removeItem(STORAGE_KEY);
     }
   }, [phase, level, sessionId, sentence, wordStates, sessionStats]);
 
+  // Auto-démarrage si pas de session persistée
+  useEffect(() => {
+    if (!hasAutoStarted.current && !persisted) {
+      hasAutoStarted.current = true;
+      startSession();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const startSession = async () => {
     setPhase("loading");
+    const currentLevel = loadLevel();
+    setLevel(currentLevel);
     try {
       const r = await fetch("/api/sessions", {
         method: "POST",
@@ -89,22 +117,23 @@ export default function PracticePage() {
       if (!r.ok) throw new Error(data.error || "Erreur");
       setSessionId(data.session.id);
       setPreviousSentences([]);
-      await fetchNextSentence(data.session.id, []);
+      await fetchNextSentence(data.session.id, [], currentLevel);
     } catch (e: any) {
       toast.error(e.message || "Erreur lors du démarrage");
-      setPhase("setup");
+      setPhase("finished");
     }
   };
 
-  const fetchNextSentence = async (sid: string, prevSentences?: string[]) => {
+  const fetchNextSentence = async (sid: string, prevSentences?: string[], overrideLevel?: Level) => {
     setPhase("loading");
     setMascotMood("thinking");
     const sentencesHistory = prevSentences ?? previousSentences;
+    const effectiveLevel = overrideLevel ?? level;
     try {
       const r = await fetch("/api/sentences", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: sid, level, previousSentences: sentencesHistory }),
+        body: JSON.stringify({ sessionId: sid, level: effectiveLevel, previousSentences: sentencesHistory }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || "Erreur");
@@ -234,56 +263,6 @@ export default function PracticePage() {
   };
 
   // ────────────────────────────────────────────────────────────
-  // ÉCRAN SETUP
-  // ────────────────────────────────────────────────────────────
-  if (phase === "setup") {
-    return (
-      <div className="max-w-lg mx-auto space-y-6">
-        <div className="flex items-center gap-4">
-          <Mascot size={80} mood="excited" />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">🎯 Nouvelle dictée</h1>
-            <p className="text-gray-500 mt-1">Choisis le niveau et c'est parti !</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm space-y-5">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Niveau scolaire</label>
-            <select
-              value={level}
-              onChange={(e) => setLevel(e.target.value as Level)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white"
-            >
-              <option value="cp">CP (6-7 ans) — phrases courtes</option>
-              <option value="ce1">CE1 (7-8 ans) — phrases simples</option>
-              <option value="ce2">CE2 (8-9 ans) — phrases moyennes</option>
-              <option value="cm1">CM1 (9-10 ans) — phrases longues</option>
-              <option value="cm2">CM2 (10-11 ans) — phrases complexes</option>
-            </select>
-          </div>
-
-          <div className="bg-purple-50 rounded-xl p-4 text-sm text-purple-800">
-            <p className="font-semibold mb-1">Comment ça marche :</p>
-            <ol className="list-decimal list-inside space-y-1 text-purple-700">
-              <li>Une phrase est générée avec tes mots à travailler</li>
-              <li>Lis la phrase à voix haute à ton enfant</li>
-              <li>Ton enfant écrit la dictée sur papier</li>
-              <li>Coche les mots bien écrits ✅ (les autres = ❌)</li>
-              <li>Clique sur <strong>Continuer</strong> pour la phrase suivante</li>
-            </ol>
-          </div>
-
-          <button onClick={startSession}
-            className="w-full py-4 bg-purple-600 text-white font-bold text-lg rounded-xl hover:bg-purple-700 transition shadow hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]">
-            🚀 Lancer la dictée !
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ────────────────────────────────────────────────────────────
   // CHARGEMENT
   // ────────────────────────────────────────────────────────────
   if (phase === "loading") {
@@ -325,9 +304,10 @@ export default function PracticePage() {
         <div className="flex gap-3 justify-center">
           <button onClick={() => {
             localStorage.removeItem(STORAGE_KEY);
-            setPhase("setup"); setSessionId(null); setSentence(null);
+            setSessionId(null); setSentence(null);
             setSessionStats({ totalSentences: 0, totalWords: 0, correctWords: 0 });
             setPreviousSentences([]);
+            startSession();
           }} className="px-6 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition">
             🔄 Nouvelle session
           </button>
@@ -348,7 +328,11 @@ export default function PracticePage() {
       {/* Barre session */}
       <div className="flex items-center justify-between text-sm text-gray-500">
         <span>Phrase #{sessionStats.totalSentences + 1}</span>
-        <select value={level} onChange={(e) => setLevel(e.target.value as Level)}
+        <select value={level} onChange={(e) => {
+          const l = e.target.value as Level;
+          setLevel(l);
+          localStorage.setItem(LEVEL_KEY, l);
+        }}
           className="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-500 bg-white">
           {LEVELS.map(({key, label}) => <option key={key} value={key}>{label}</option>)}
         </select>

@@ -2,112 +2,93 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { SignInButton, SignUpButton, useUser } from "@clerk/nextjs";
-import { redirect } from "next/navigation";
-import { Mascot } from "@/components/Mascot";
+import { SignInButton, useUser } from "@clerk/nextjs";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function LandingPage() {
   const { isSignedIn, isLoaded } = useUser();
+  const router = useRouter();
 
-  if (isLoaded && isSignedIn) {
-    redirect("/dashboard");
-  }
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      router.replace("/dashboard");
+    }
+  }, [isLoaded, isSignedIn, router]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 flex flex-col">
-      {/* Header */}
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex flex-col">
+      {/* Header minimaliste */}
       <header className="flex justify-between items-center px-6 py-4">
-        <div className="flex items-center gap-2 text-2xl font-bold text-purple-700">
+        <div className="flex items-center gap-2 text-xl font-bold text-purple-700">
           <span>✏️</span>
           <span>Dictou</span>
         </div>
-        <div className="flex gap-3">
-          <SignInButton mode="modal">
-            <button className="px-4 py-2 text-purple-700 font-medium hover:bg-purple-50 rounded-xl transition">
-              Connexion
-            </button>
-          </SignInButton>
-          <SignUpButton mode="modal">
-            <button className="px-4 py-2 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition shadow-sm">
-              S'inscrire
-            </button>
-          </SignUpButton>
-        </div>
+        <SignInButton mode="modal">
+          <button className="text-sm text-gray-500 hover:text-purple-700 font-medium transition px-3 py-1.5 rounded-lg hover:bg-purple-50">
+            Se connecter
+          </button>
+        </SignInButton>
       </header>
 
       {/* Hero */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6 text-center pb-20">
+      <main className="flex-1 flex flex-col items-center justify-center px-6 text-center pb-24">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="max-w-2xl"
+          transition={{ duration: 0.5 }}
+          className="max-w-lg w-full"
         >
-          <div className="flex justify-center mb-4">
-            <Mascot size={100} mood="happy" />
-          </div>
-          <h1 className="text-3xl sm:text-5xl font-bold text-gray-900 mb-4 leading-tight">
-            Apprends la dictée{" "}
-            <span className="text-purple-600">en t'amusant !</span>
+          {/* Titre */}
+          <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-4 leading-tight tracking-tight">
+            La dictée intelligente
+            <br />
+            <span className="text-purple-600">pour ton enfant</span>
           </h1>
-          <p className="text-base sm:text-xl text-gray-600 mb-8">
-            Des phrases intelligentes générées selon tes mots à apprendre.
-            Progresse à ton rythme, gagne des étoiles, deviens champion de dictée !
+
+          <p className="text-lg text-gray-500 mb-10 leading-relaxed">
+            Génère des phrases avec les mots à apprendre.<br className="hidden sm:block" />
+            Aucun compte requis pour commencer.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-            <SignUpButton mode="modal">
-              <button className="w-full sm:w-auto px-8 py-4 bg-purple-600 text-white text-base sm:text-lg font-bold rounded-2xl hover:bg-purple-700 transition shadow-lg hover:shadow-xl hover:scale-105 active:scale-95">
-                Commencer gratuitement 🚀
-              </button>
-            </SignUpButton>
-            <Link
-              href="/jouer"
-              className="w-full sm:w-auto px-8 py-4 bg-white text-purple-700 text-base sm:text-lg font-bold rounded-2xl border-2 border-purple-200 hover:border-purple-400 transition text-center"
-            >
-              Essayer sans compte →
-            </Link>
-            <SignInButton mode="modal">
-              <button className="w-full sm:w-auto px-8 py-4 bg-white/60 text-gray-600 text-base sm:text-lg font-medium rounded-2xl border border-gray-200 hover:border-gray-300 transition">
-                J'ai déjà un compte
-              </button>
-            </SignInButton>
-          </div>
-        </motion.div>
+          {/* CTA principal */}
+          <Link
+            href="/jouer"
+            className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-10 py-5 bg-purple-600 text-white text-xl font-bold rounded-2xl shadow-lg hover:bg-purple-700 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all"
+          >
+            🎯 Générer une dictée
+          </Link>
 
-        {/* Features */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-20 max-w-3xl w-full"
-        >
-          {[
-            {
-              emoji: "🧠",
-              title: "IA intelligente",
-              desc: "Les phrases s'adaptent automatiquement aux mots que tu dois travailler",
-            },
-            {
-              emoji: "⭐",
-              title: "Gagne des étoiles",
-              desc: "Chaque bonne réponse te rapproche de la maîtrise. Construis ton streak !",
-            },
-            {
-              emoji: "📊",
-              title: "Suis tes progrès",
-              desc: "Un tableau de bord pour voir ta progression mot par mot",
-            },
-          ].map((f) => (
-            <div
-              key={f.title}
-              className="bg-white/80 backdrop-blur rounded-2xl p-6 shadow-sm border border-white"
-            >
-              <div className="text-4xl mb-3">{f.emoji}</div>
-              <h3 className="font-bold text-gray-900 mb-1">{f.title}</h3>
-              <p className="text-gray-600 text-sm">{f.desc}</p>
-            </div>
-          ))}
+          <p className="mt-5 text-sm text-gray-400">
+            On t'a partagé une liste sur WhatsApp ?{" "}
+            <Link href="/jouer" className="text-purple-500 underline underline-offset-2 hover:text-purple-700">
+              Clique et c'est parti →
+            </Link>
+          </p>
+
+          {/* Séparateur */}
+          <div className="flex items-center gap-4 mt-12 mb-8">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-xs text-gray-400 font-medium uppercase tracking-widest">Comment ça marche</span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
+
+          {/* Steps */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
+            {[
+              { num: "1", title: "Ajoute les mots", desc: "Les mots du carnet de dictée de ton enfant" },
+              { num: "2", title: "Lis la phrase", desc: "L'IA génère une phrase adaptée au niveau" },
+              { num: "3", title: "Coche les bons mots", desc: "Ton enfant écrit, tu valides ce qui est juste" },
+            ].map((s) => (
+              <div key={s.num} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                <div className="w-7 h-7 bg-purple-100 text-purple-700 font-bold text-sm rounded-full flex items-center justify-center mb-3">
+                  {s.num}
+                </div>
+                <p className="font-semibold text-gray-800 text-sm mb-1">{s.title}</p>
+                <p className="text-xs text-gray-500">{s.desc}</p>
+              </div>
+            ))}
+          </div>
         </motion.div>
       </main>
     </div>
