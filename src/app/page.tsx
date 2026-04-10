@@ -133,8 +133,8 @@ export default function LandingPage() {
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-left">
               <div className="flex items-center gap-1 mb-2 text-amber-400 text-sm">⭐⭐⭐⭐⭐</div>
               <p className="text-gray-700 text-sm leading-relaxed italic">
-                &ldquo;Chaque semaine j&apos;ajoute 5 nouveaux mots à ma liste, et mes élèves peuvent s&apos;entraîner
-                directement depuis le lien WhatsApp. La liste se met à jour automatiquement — je ne prépare plus rien.&rdquo;
+                &ldquo;Chaque semaine j&apos;ajoute 5 nouveaux mots à ma liste, et mes élèves s&apos;entraînent
+                directement depuis le lien WhatsApp. La liste se met à jour automatiquement.&rdquo;
               </p>
               <p className="text-xs text-gray-400 mt-2">— Mme Dupont, institutrice CE2 — Lyon</p>
             </div>
