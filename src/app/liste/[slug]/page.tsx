@@ -27,10 +27,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   return {
     title: `${list.name} — Dictou`,
-    description: `Liste de ${list.items.length} mots à dicter. Copiez-la gratuitement sur Dictou.`,
+    description: `Liste de ${list.items.length} mots à dicter. Rejoignez-la gratuitement sur Dictou pour pratiquer avec les mêmes mots.`,
     openGraph: {
       title: list.name,
-      description: `${list.items.length} mots • Copiée ${list.copyCount} fois`,
+      description: `${list.items.length} mots • ${list.copyCount} élèves abonnés`,
     },
   };
 }

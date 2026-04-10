@@ -24,6 +24,15 @@ interface GuestWord {
   text: string;
 }
 
+const FUNCTION_WORDS = new Set([
+  "le","la","les","de","du","des","un","une","en","au","aux","et","ou","à",
+  "son","sa","ses","mon","ma","mes","ton","ta","tes","ce","cet","cette","ces",
+  "il","elle","je","tu","on","nous","vous","ils","elles","lui","leur","leurs",
+  "qui","que","qu","dont","où","car","ni","si","y","est","sont","a","ont","se",
+  "me","te","ne","pas","plus","très","bien","par","sur","sous","dans","avec",
+  "pour","lors","dès","chez","vers","sans","avant","après",
+]);
+
 const LEVELS: { key: Level; label: string }[] = [
   { key: "cp", label: "CP (6-7 ans)" },
   { key: "ce1", label: "CE1 (7-8 ans)" },
@@ -110,7 +119,6 @@ export default function JouerPage() {
       // Mélanger les mots pour varier
       const shuffled = [...guestWords].sort(() => Math.random() - 0.5);
       const words = shuffled.map(w => w.text);
-      const targets = words.slice(0, 3);
 
       const r = await fetch("/api/sentences/guest", {
         method: "POST",
@@ -121,10 +129,24 @@ export default function JouerPage() {
       if (!r.ok) throw new Error(data.error || "Erreur");
 
       setSentence(data.sentence);
-      setTargetWords(targets);
+
+      // Extraire tous les mots significatifs de la phrase, dans l'ordre
+      const tokens = data.sentence.split(/[\s,;:!?.«»""''()\-]+/);
+      const seen = new Set<string>();
+      const orderedTargets: string[] = [];
+      for (const token of tokens) {
+        const clean = token.replace(/[^a-zàâäéèêëîïôùûüç'-]/gi, "").toLowerCase();
+        if (clean.length >= 3 && !FUNCTION_WORDS.has(clean) && !seen.has(clean)) {
+          seen.add(clean);
+          // Conserver la casse originale du token
+          orderedTargets.push(token.replace(/[^a-zA-ZàâäéèêëîïôùûüçÀÂÄÉÈÊËÎÏÔÙÛÜÇ'-]/g, ""));
+        }
+      }
+
+      setTargetWords(orderedTargets);
       // Initialiser les états des mots cibles
       const states: Record<string, WordState> = {};
-      for (const w of targets) states[w] = "pending";
+      for (const w of orderedTargets) states[w] = "pending";
       setWordStates(states);
       setPhase("dictating");
     } catch (e: unknown) {
@@ -164,22 +186,9 @@ export default function JouerPage() {
     setWordStates({});
   };
 
-  // Render la phrase avec les mots cibles soulignés
   const renderSentence = () => {
     if (!sentence) return null;
-    const targetSet = new Set(targetWords.map(w => w.toLowerCase()));
-    const tokens = sentence.split(/(\s+|[,;:!?.«»""''()\-]+)/);
-    return tokens.map((token, i) => {
-      const clean = token.toLowerCase().replace(/[^a-zàâäéèêëîïôùûüç'-]/g, "");
-      if (targetSet.has(clean)) {
-        return (
-          <span key={i} className="font-semibold text-purple-700 underline decoration-dotted decoration-purple-400 px-0.5">
-            {token}
-          </span>
-        );
-      }
-      return <span key={i} className="text-gray-700">{token}</span>;
-    });
+    return <span className="text-gray-800">{sentence}</span>;
   };
 
   return (
@@ -365,9 +374,6 @@ export default function JouerPage() {
                   </div>
                   <p className="text-xs text-gray-400 mt-3">
                     1 clic = ✅ bien écrit · pas coché = ❌ mal écrit
-                  </p>
-                  <p className="text-xs text-gray-300 mt-2">
-                    <span className="text-purple-500">soulignés</span> = mots de ta liste · <span className="opacity-60">autres</span> = contexte
                   </p>
                 </div>
 

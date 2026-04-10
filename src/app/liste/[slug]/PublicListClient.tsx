@@ -16,7 +16,7 @@ interface PublicListData {
 export default function PublicListClient({ list }: { list: PublicListData }) {
   const { user, isLoaded } = useUser();
   const router = useRouter();
-  const [copying, setCopying] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
 
   const handleUseList = async () => {
     if (!isLoaded) return;
@@ -29,7 +29,7 @@ export default function PublicListClient({ list }: { list: PublicListData }) {
       return;
     }
 
-    setCopying(true);
+    setSubscribing(true);
     try {
       const r = await fetch(`/api/public/lists/${list.slug}/copy`, {
         method: "POST",
@@ -39,13 +39,15 @@ export default function PublicListClient({ list }: { list: PublicListData }) {
 
       const data = await r.json() as { addedCount: number; skippedCount: number };
       toast.success(
-        `${data.addedCount} mot${data.addedCount !== 1 ? "s" : ""} ajouté${data.addedCount !== 1 ? "s" : ""} à ta liste !`
+        data.addedCount > 0
+          ? `Abonné ! ${data.addedCount} nouveau${data.addedCount !== 1 ? "x" : ""} mot${data.addedCount !== 1 ? "s" : ""} synchronisé${data.addedCount !== 1 ? "s" : ""} ✓`
+          : "Déjà abonné à cette liste !"
       );
       router.push("/words");
     } catch {
-      toast.error("Erreur lors de la copie");
+      toast.error("Erreur lors de l'abonnement");
     } finally {
-      setCopying(false);
+      setSubscribing(false);
     }
   };
 
