@@ -91,6 +91,18 @@ export default function LandingPage() {
           </div>
         </motion.div>
       </main>
+
+      <footer className="text-center py-6 text-xs text-gray-400 space-x-3 border-t border-gray-100">
+        <Link href="/a-propos" className="hover:text-purple-600 transition">À propos</Link>
+        <span>·</span>
+        <Link href="/mentions-legales" className="hover:text-purple-600 transition">Mentions légales</Link>
+        <span>·</span>
+        <Link href="/confidentialite" className="hover:text-purple-600 transition">Confidentialité</Link>
+        <span>·</span>
+        <Link href="/cgu" className="hover:text-purple-600 transition">CGU</Link>
+        <span>·</span>
+        <a href="mailto:contact@dictou.com" className="hover:text-purple-600 transition">Contact</a>
+      </footer>
     </div>
   );
 }
