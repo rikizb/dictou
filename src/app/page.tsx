@@ -82,13 +82,13 @@ export default function LandingPage() {
 
             {/* Titre */}
             <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-3 leading-tight tracking-tight">
-              La dictée IA<br />
-              <span className="text-purple-600">pour vos élèves.</span>
+              La dictée qui<br />
+              <span className="text-purple-600">s'adapte à leur niveau.</span>
             </h1>
 
             <p className="text-lg text-gray-500 mb-8 leading-relaxed max-w-md mx-auto">
               Créez votre liste. Partagez le lien à votre classe.
-              <br />L'IA génère les phrases de dictée. <strong className="text-gray-700">Sans rien préparer.</strong>
+              <br />L'IA génère les phrases en s'adaptant à la progression de chaque élève.
             </p>
 
             {/* CTA principal enseignant */}
