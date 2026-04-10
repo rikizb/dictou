@@ -14,8 +14,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Aucun mot fourni" }, { status: 400 });
   }
 
-  const targetWords = words.slice(0, 3);
-  const optionalWords = words.slice(3, 7);
+  // Adapter le nombre de mots requis au niveau
+  const maxRequired: Record<string, number> = { cp: 3, ce1: 4, ce2: 5, cm1: 5, cm2: 6 };
+  const max = maxRequired[level || "cp"] || 4;
+  const targetWords = words.slice(0, max);
+  const optionalWords = words.slice(max, max + 3);
 
   const generated = await generateDictationSentence({
     targetWords,

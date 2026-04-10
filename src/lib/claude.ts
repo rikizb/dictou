@@ -49,12 +49,17 @@ EXEMPLES INTERDITS (phrases qui n'ont pas de sens) :
 - "Il mange le vite dans la cuisine." ❌
 - "Le beau rouge enfant court jardin." ❌
 
-EXEMPLES PARFAITS :
-- "Le petit chien roux joue avec une balle rouge dans le jardin." ✅
-- "Chaque matin, Léa prend son cartable et court jusqu'à l'école." ✅
-- "La sorcière agite sa baguette magique et fait apparaître un château." ✅
-- "Les enfants ramassent des châtaignes sous les grands arbres de la forêt." ✅
-- "Mon frère a trouvé un beau caillou brillant au bord de la rivière." ✅`;
+EXEMPLES PARFAITS (phrases qui racontent quelque chose de vrai et d'imagé) :
+- "Le petit chat roux s'est endormi sur le rebord chaud de la fenêtre." ✅
+- "Chaque matin, Léa prend son cartable rouge et court jusqu'à l'école." ✅
+- "La sorcière agite sa baguette magique et fait apparaître un château de lumière." ✅
+- "Les enfants ramassent des châtaignes dorées sous les grands arbres de la forêt." ✅
+- "Mon frère a trouvé un joli caillou brillant au bord de la rivière claire." ✅
+- "Ce soir, papa a préparé une délicieuse soupe chaude pour toute la famille." ✅
+- "Le vieux chien du voisin garde la maison avec beaucoup de courage." ✅
+- "Pendant les vacances, nous avons construit un grand château de sable au bord de la mer." ✅
+- "La petite fille aux cheveux bouclés a gagné la course dans la cour de récréation." ✅
+- "Depuis sa fenêtre, le garçon observe les nuages qui filent rapidement dans le ciel bleu." ✅`;
 
   const userPrompt = `Niveau : ${levelGuide}
 

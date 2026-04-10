@@ -43,16 +43,6 @@ interface Subscription {
   };
 }
 
-interface PublicList {
-  id: string;
-  slug: string;
-  name: string;
-  itemCount: number;
-  copyCount: number;
-  ownerClerkId: string;
-  isSubscribed: boolean;
-}
-
 interface WordListSummary {
   id: string;
   slug: string;
@@ -108,7 +98,6 @@ export default function DashboardPage() {
   // Words state
   const [words, setWords] = useState<Word[]>([]);
   const [wordsLoading, setWordsLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [wordInput, setWordInput] = useState("");
   const [adding, setAdding] = useState(false);
   const [wordFilter, setWordFilter] = useState<"all" | "0" | "1" | "2">("all");
@@ -120,12 +109,6 @@ export default function DashboardPage() {
 
   // Subscriptions state
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-
-  // Public lists search (pas de chargement auto — uniquement sur recherche)
-  const [publicLists, setPublicLists] = useState<PublicList[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchLoading, setSearchLoading] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // My lists
   const [myLists, setMyLists] = useState<WordListSummary[]>([]);
@@ -161,19 +144,6 @@ export default function DashboardPage() {
     setListsLoading(false);
   }, []);
 
-  const searchPublicLists = useCallback(async (q: string) => {
-    setSearchLoading(true);
-    try {
-      const r = await fetch(`/api/public/lists/search${q ? `?q=${encodeURIComponent(q)}` : ""}`);
-      if (r.ok) {
-        const data = await r.json();
-        setPublicLists(data.lists || []);
-      }
-    } finally {
-      setSearchLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     // Import des mots guest si l'utilisateur vient de /jouer
     const guestRaw = typeof window !== "undefined" ? localStorage.getItem("guest_words") : null;
@@ -207,7 +177,6 @@ export default function DashboardPage() {
     loadWords();
     loadSubscriptions();
     loadMyLists();
-    // Pas de searchPublicLists("") au chargement — uniquement sur saisie
 
     // Sync silencieux au chargement
     fetch("/api/sync", { method: "POST" })
@@ -219,7 +188,7 @@ export default function DashboardPage() {
         }
       })
       .catch(() => {});
-  }, [loadWords, loadSubscriptions, loadMyLists, searchPublicLists]);
+  }, [loadWords, loadSubscriptions, loadMyLists]);
 
   useEffect(() => {
     return () => {
@@ -227,40 +196,7 @@ export default function DashboardPage() {
     };
   }, []);
 
-  // Debounce search — uniquement si l'utilisateur a tapé quelque chose
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!searchQuery.trim()) {
-      setPublicLists([]);
-      return;
-    }
-    debounceRef.current = setTimeout(() => {
-      searchPublicLists(searchQuery);
-    }, 300);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [searchQuery, searchPublicLists]);
-
   // ─── Words handlers ────────────────────────────────────────
-
-  const handleSync = async () => {
-    setSyncing(true);
-    try {
-      const r = await fetch("/api/sync", { method: "POST" });
-      const data = await r.json();
-      if (data.addedCount > 0) {
-        toast.success(`🔄 ${data.addedCount} nouveau${data.addedCount > 1 ? "x mots" : " mot"} ajouté${data.addedCount > 1 ? "s" : ""} !`);
-        await loadWords();
-      } else {
-        toast("Tout est à jour ✅", { icon: "🔄" });
-      }
-    } catch {
-      toast.error("Erreur lors de la synchronisation");
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   const handleAddWords = async () => {
     if (!wordInput.trim()) return;
@@ -325,24 +261,6 @@ export default function DashboardPage() {
       toast.error("Erreur lors de la suppression");
     }
   }, [loadWords]);
-
-  // ─── Public list handlers ──────────────────────────────────
-
-  const handleSubscribe = async (list: PublicList) => {
-    try {
-      const r = await fetch(`/api/public/lists/${list.slug}/copy`, { method: "POST" });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error || "Erreur");
-      setPublicLists((prev) =>
-        prev.map((l) => l.id === list.id ? { ...l, isSubscribed: true } : l)
-      );
-      toast.success(`Abonné à "${list.name}" — ${data.addedCount} mot${data.addedCount !== 1 ? "s" : ""} ajouté${data.addedCount !== 1 ? "s" : ""} !`);
-      await loadWords();
-      await loadSubscriptions();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erreur lors de l'abonnement");
-    }
-  };
 
   // ─── Subscriptions handlers ────────────────────────────────
 
@@ -462,7 +380,64 @@ export default function DashboardPage() {
       </motion.div>
 
       {/* ══════════════════════════════════════════════════
-          2. MES MOTS
+          2. MES LISTES DYNAMIQUES (abonnements)
+      ══════════════════════════════════════════════════ */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        className="space-y-3"
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-gray-900">🔄 Mes listes dynamiques</h2>
+          <Link href="/listes" className="text-sm text-purple-600 hover:text-purple-800 font-medium transition">
+            Explorer →
+          </Link>
+        </div>
+
+        {subscriptions.length === 0 ? (
+          <div className="bg-white rounded-2xl border-2 border-dashed border-purple-200 p-6 text-center space-y-3">
+            <div className="text-4xl">🏫</div>
+            <p className="text-gray-700 font-semibold">Tu n'es abonné à aucune liste</p>
+            <p className="text-sm text-gray-500">Rejoins la liste de ta classe ou explore les listes partagées par d'autres profs.</p>
+            <Link
+              href="/listes"
+              className="inline-block px-6 py-2.5 bg-purple-600 text-white font-bold text-sm rounded-xl hover:bg-purple-700 transition shadow-sm"
+            >
+              Parcourir les listes →
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {subscriptions.map((sub) => (
+              <div key={sub.listId} className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center text-lg shrink-0">📋</div>
+                <div className="flex-1 min-w-0">
+                  <a href={`/liste/${sub.list.slug}`} target="_blank" rel="noopener noreferrer"
+                    className="font-semibold text-gray-800 hover:text-purple-700 transition truncate block text-sm">
+                    {sub.list.name}
+                  </a>
+                  <p className="text-xs text-gray-400">{sub.list.itemCount} mot{sub.list.itemCount !== 1 ? "s" : ""}</p>
+                </div>
+                <span className="shrink-0 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-lg">
+                  Abonné ✓
+                </span>
+                <button
+                  onClick={() => handleUnsubscribe(sub.listId, sub.list.name)}
+                  className="px-2 py-1 text-xs text-gray-300 hover:text-red-400 rounded-lg transition shrink-0"
+                  title="Se désabonner"
+                >✕</button>
+              </div>
+            ))}
+            <Link href="/listes" className="flex items-center justify-center gap-1 py-2 text-sm text-purple-600 hover:text-purple-800 transition font-medium">
+              + Rejoindre une autre liste
+            </Link>
+          </div>
+        )}
+      </motion.section>
+
+      {/* ══════════════════════════════════════════════════
+          3. MES MOTS
       ══════════════════════════════════════════════════ */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
@@ -475,14 +450,6 @@ export default function DashboardPage() {
           <h2 className="text-lg font-bold text-gray-900">
             📚 Mes mots ({words.length})
           </h2>
-          <button
-            onClick={handleSync}
-            disabled={syncing}
-            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 disabled:opacity-50 transition"
-          >
-            <span className={syncing ? "animate-spin" : ""}>🔄</span>
-            <span className="hidden sm:inline">{syncing ? "Sync…" : "Synchroniser"}</span>
-          </button>
         </div>
 
         {/* Formulaire ajout compact */}
@@ -631,105 +598,7 @@ export default function DashboardPage() {
         </div>
       </motion.section>
 
-      {/* ══════════════════════════════════════════════════
-          3. LISTES PARTAGÉES (en bas)
-      ══════════════════════════════════════════════════ */}
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4"
-      >
-        <h2 className="text-lg font-bold text-gray-900">📋 Listes partagées</h2>
-
-        {/* Mes abonnements actifs */}
-        {subscriptions.length > 0 && (
-          <div className="space-y-2">
-            {subscriptions.map((sub) => (
-              <div key={sub.listId} className="flex items-center gap-2 py-2 border-b border-gray-50 last:border-0">
-                <div className="flex-1 min-w-0">
-                  <a
-                    href={`/liste/${sub.list.slug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-medium text-gray-800 hover:text-purple-700 transition truncate block text-sm"
-                  >
-                    {sub.list.name}
-                  </a>
-                  <p className="text-xs text-gray-400">
-                    {sub.list.itemCount} mot{sub.list.itemCount !== 1 ? "s" : ""}
-                  </p>
-                </div>
-                <span className="shrink-0 text-xs font-medium text-green-700 bg-green-50 px-2 py-1 rounded-lg">
-                  Abonné ✓
-                </span>
-                <button
-                  onClick={() => handleUnsubscribe(sub.listId, sub.list.name)}
-                  className="px-2 py-1 text-xs text-gray-300 hover:text-red-400 rounded-lg transition"
-                  title="Se désabonner"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Barre de recherche */}
-        <div className="relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-          </svg>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Chercher une liste publique..."
-            className="w-full pl-9 pr-8 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white"
-          />
-          {searchQuery && (
-            <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">×</button>
-          )}
-        </div>
-
-        {/* Résultats */}
-        {!searchQuery.trim() ? null : searchLoading ? (
-          <div className="space-y-2">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />
-            ))}
-          </div>
-        ) : publicLists.length === 0 ? (
-          <p className="text-gray-400 text-sm text-center py-2">
-            Aucune liste trouvée pour &ldquo;{searchQuery}&rdquo;
-          </p>
-        ) : (
-          <ul className="divide-y divide-gray-50">
-            {publicLists.map((list) => (
-              <li key={list.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-800 truncate">{list.name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {list.itemCount} mot{list.itemCount !== 1 ? "s" : ""}
-                  </p>
-                </div>
-                {list.isSubscribed ? (
-                  <span className="shrink-0 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-xl">
-                    Abonné ✓
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => handleSubscribe(list)}
-                    className="shrink-0 px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition"
-                  >
-                    S'abonner
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </motion.section>
+      {/* Section "Listes partagées" supprimée — remplacée par la section "Mes listes dynamiques" au-dessus */}
 
       {/* ══════════════════════════════════════════════════
           4. MES LISTES (conditionnel)

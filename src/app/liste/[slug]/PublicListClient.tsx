@@ -43,7 +43,7 @@ export default function PublicListClient({ list }: { list: PublicListData }) {
           ? `Abonné ! ${data.addedCount} nouveau${data.addedCount !== 1 ? "x" : ""} mot${data.addedCount !== 1 ? "s" : ""} synchronisé${data.addedCount !== 1 ? "s" : ""} ✓`
           : "Déjà abonné à cette liste !"
       );
-      router.push("/words");
+      router.push("/dashboard");
     } catch {
       toast.error("Erreur lors de l'abonnement");
     } finally {
@@ -77,7 +77,7 @@ export default function PublicListClient({ list }: { list: PublicListData }) {
           {list.items.length} mot{list.items.length !== 1 ? "s" : ""}
           {list.copyCount > 0 && (
             <span className="text-purple-600 ml-2">
-              • Copiée {list.copyCount} fois
+              • {list.copyCount} abonné{list.copyCount > 1 ? "s" : ""}
             </span>
           )}
         </p>
@@ -102,19 +102,19 @@ export default function PublicListClient({ list }: { list: PublicListData }) {
         <div className="text-center">
           <button
             onClick={handleUseList}
-            disabled={copying || !isLoaded}
+            disabled={subscribing || !isLoaded}
             className="inline-flex items-center gap-2 px-8 py-3.5 bg-purple-600 text-white font-bold text-lg rounded-2xl hover:bg-purple-700 disabled:opacity-60 disabled:cursor-not-allowed transition shadow-md hover:shadow-lg"
           >
-            {copying ? (
+            {subscribing ? (
               <span className="animate-spin">⏳</span>
             ) : (
               <span>✨</span>
             )}
             {user
-              ? copying
-                ? "Copie en cours…"
-                : "Copier dans mes mots"
-              : "Utiliser cette liste dans Dictou"}
+              ? subscribing
+                ? "Abonnement en cours…"
+                : "Rejoindre cette liste"
+              : "Rejoindre cette liste"}
           </button>
           {!user && isLoaded && (
             <p className="text-gray-400 text-sm mt-3">

@@ -123,7 +123,7 @@ export default function ListesPage() {
                           {list.name}
                         </p>
                         <p className="text-xs text-gray-400">
-                          {list.itemCount} mot{list.itemCount > 1 ? "s" : ""} · utilisée {list.copyCount} fois
+                          {list.itemCount} mot{list.itemCount > 1 ? "s" : ""} · {list.copyCount} abonné{list.copyCount > 1 ? "s" : ""}
                         </p>
                       </div>
                     </div>

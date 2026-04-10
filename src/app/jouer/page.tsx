@@ -16,6 +16,45 @@ const DEFAULT_WORDS: Record<string, string[]> = {
   cm2: ["conquête", "harmonie", "découverte", "mémoire", "silence"],
 };
 
+// Phrases pré-rédigées de qualité pour les mots par défaut
+const CACHED_SENTENCES: Record<string, string[]> = {
+  cp: [
+    "Le petit chat roux s'est endormi sur le rebord chaud de la fenêtre.",
+    "Chaque matin, Léa prend son livre et court jusqu'à l'école sous le soleil.",
+    "La vieille maison du boulanger cache un chat qui dort près du four.",
+    "Le soleil brille fort sur l'école et les enfants chantent dans la cour.",
+    "Mon chat préféré attend devant la maison quand je rentre de l'école.",
+  ],
+  ce1: [
+    "Ce matin, toute la famille s'est retrouvée dans le jardin pour un pique-nique.",
+    "Mon meilleur ami m'a invité à jouer dans son grand jardin après la classe.",
+    "La maîtresse a lu une belle histoire à toute la classe ce matin.",
+    "Chaque matin, la famille se réunit autour de la table avant d'aller en classe.",
+    "Mon ami du jardin m'a prêté un livre passionnant sur les animaux sauvages.",
+  ],
+  ce2: [
+    "Au cœur de la forêt sombre, les explorateurs ont découvert un secret bien gardé.",
+    "La lumière du soleil filtrait à travers les arbres et éclairait leur voyage.",
+    "Dans cette vieille forêt, une lumière mystérieuse gardait l'histoire d'un ancien secret.",
+    "Le voyage à travers la forêt enchantée révéla un secret caché depuis des siècles.",
+    "La lumière dorée du soir baignait la forêt d'une histoire magique et secrète.",
+  ],
+  cm1: [
+    "Avec un courage extraordinaire, l'astronaute a traversé la planète inconnue seul.",
+    "La liberté, c'est cette aventure que chaque être vivant porte au fond de lui.",
+    "Le mystère de cette planète lointaine appelait les explorateurs à une nouvelle aventure.",
+    "Son courage face au mystère de la planète inconnue força l'admiration de tous.",
+    "L'aventure vers la planète bleue demandait un courage et une liberté exceptionnels.",
+  ],
+  cm2: [
+    "Dans le silence de la nuit, la découverte bouleversa à jamais sa mémoire.",
+    "La conquête de l'harmonie intérieure est la plus belle découverte de toute une vie.",
+    "Le silence du musée était troublé par une découverte qui marqua les mémoires.",
+    "La conquête de l'harmonie entre les peuples restera dans la mémoire de l'histoire.",
+    "Dans ce silence profond, la découverte d'une harmonie nouvelle changea tout à jamais.",
+  ],
+};
+
 type WordState = "pending" | "correct";
 type Level = "cp" | "ce1" | "ce2" | "cm1" | "cm2";
 type Phase = "setup" | "loading" | "dictating";
@@ -116,22 +155,36 @@ export default function JouerPage() {
     }
     setPhase("loading");
     try {
-      // Mélanger les mots pour varier
-      const shuffled = [...guestWords].sort(() => Math.random() - 0.5);
-      const words = shuffled.map(w => w.text);
+      // Utiliser les phrases pré-rédigées si l'utilisateur a les mots par défaut
+      const currentWordTexts = guestWords.map(w => w.text).sort().join(",");
+      const defaultWordTexts = (DEFAULT_WORDS[level] || []).sort().join(",");
+      const isUsingDefaults = currentWordTexts === defaultWordTexts;
+      const cached = CACHED_SENTENCES[level] || [];
+      const unusedCached = cached.filter(s => !previousSentences.includes(s));
 
-      const r = await fetch("/api/sentences/guest", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ words, level, previousSentences }),
-      });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error || "Erreur");
+      let sentenceText: string;
+      if (isUsingDefaults && unusedCached.length > 0) {
+        // Servir une phrase pré-rédigée non encore vue
+        sentenceText = unusedCached[Math.floor(Math.random() * unusedCached.length)];
+      } else {
+        // Mélanger les mots pour varier
+        const shuffled = [...guestWords].sort(() => Math.random() - 0.5);
+        const words = shuffled.map(w => w.text);
 
-      setSentence(data.sentence);
+        const r = await fetch("/api/sentences/guest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ words, level, previousSentences }),
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || "Erreur");
+        sentenceText = data.sentence;
+      }
+
+      setSentence(sentenceText);
 
       // Extraire tous les mots significatifs de la phrase, dans l'ordre
-      const tokens = data.sentence.split(/[\s,;:!?.«»""''()\-]+/);
+      const tokens = sentenceText.split(/[\s,;:!?.«»""''()\-]+/);
       const seen = new Set<string>();
       const orderedTargets: string[] = [];
       for (const token of tokens) {
