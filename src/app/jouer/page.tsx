@@ -248,7 +248,7 @@ export default function JouerPage() {
             >
               <div className="text-center">
                 <h1 className="text-3xl font-bold text-gray-900">🎯 Dictée rapide</h1>
-                <p className="text-gray-500 mt-1">Entre les mots de ton enfant et c'est parti !</p>
+                <p className="text-gray-500 mt-1">Ajoute les mots à travailler, l'IA génère les phrases.</p>
               </div>
 
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
@@ -268,7 +268,7 @@ export default function JouerPage() {
 
                 {/* Input mots */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Tes mots à travailler</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Mots à travailler</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -340,8 +340,7 @@ export default function JouerPage() {
               className="flex flex-col items-center justify-center gap-4 py-20"
             >
               <div className="text-6xl animate-bounce">✏️</div>
-              <p className="text-gray-600 text-lg font-medium">Génération de la phrase…</p>
-              <p className="text-gray-400 text-sm">Dictou réfléchit 🤔</p>
+              <p className="text-gray-500 text-base font-medium">Génération de la phrase…</p>
             </motion.div>
           )}
 
@@ -365,7 +364,7 @@ export default function JouerPage() {
                 {/* Phrase */}
                 <div className="p-6 border-b border-gray-50">
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                    📖 Lis cette phrase à voix haute
+                    📖 Phrase à dicter à l'enfant
                   </p>
                   <p className="text-xl font-medium leading-relaxed">
                     {renderSentence()}
@@ -375,7 +374,7 @@ export default function JouerPage() {
                 {/* Évaluation */}
                 <div className="p-6">
                   <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">
-                    Coche les mots bien écrits
+                    Coche les mots bien orthographiés
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {targetWords.map((word) => {
@@ -401,7 +400,7 @@ export default function JouerPage() {
                     })}
                   </div>
                   <p className="text-xs text-gray-400 mt-3">
-                    1 clic = ✅ bien écrit · pas coché = ❌ mal écrit
+                    Coche tout ce que l'enfant a bien écrit — le reste est noté ❌
                   </p>
                 </div>
 
@@ -417,7 +416,7 @@ export default function JouerPage() {
                     onClick={continuer}
                     className="px-6 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition shadow hover:scale-105"
                   >
-                    Continuer →
+                    Phrase suivante →
                   </button>
                 </div>
               </div>
@@ -427,15 +426,15 @@ export default function JouerPage() {
       </main>
 
       {/* Bannière fixe inscription */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-purple-600 to-indigo-500 text-white px-4 py-3 flex items-center justify-between gap-3 shadow-lg z-40">
-        <p className="text-sm font-medium">
-          💾 Sauvegardez votre progression et accédez à toutes les fonctionnalités !
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-purple-100 px-4 py-3 flex items-center justify-between gap-3 shadow-md z-40">
+        <p className="text-sm text-gray-600">
+          Compte gratuit — sauvegardez la progression de votre enfant.
         </p>
         <Link
           href="/sign-up?redirect_url=/dashboard"
-          className="shrink-0 px-4 py-2 bg-white text-purple-700 font-bold text-sm rounded-xl hover:bg-purple-50 transition"
+          className="shrink-0 px-4 py-2 bg-purple-600 text-white font-bold text-sm rounded-xl hover:bg-purple-700 transition"
         >
-          S'inscrire gratuitement
+          Créer un compte →
         </Link>
       </div>
     </div>

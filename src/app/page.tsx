@@ -87,8 +87,8 @@ export default function LandingPage() {
             </h1>
 
             <p className="text-lg text-gray-500 mb-8 leading-relaxed max-w-md mx-auto">
-              Créez votre liste de mots. Partagez le lien à votre classe.
-              <br />Vos élèves s'entrainent jusqu'au <strong className="text-gray-700">10/10</strong>.
+              Créez votre liste. Partagez le lien à votre classe.
+              <br />L'IA génère les phrases de dictée. <strong className="text-gray-700">Sans rien préparer.</strong>
             </p>
 
             {/* CTA principal enseignant */}
@@ -133,8 +133,8 @@ export default function LandingPage() {
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-left">
               <div className="flex items-center gap-1 mb-2 text-amber-400 text-sm">⭐⭐⭐⭐⭐</div>
               <p className="text-gray-700 text-sm leading-relaxed italic">
-                &ldquo;J&apos;ai créé ma liste de CE2 en 3 minutes, partagé le lien sur le groupe WhatsApp des parents,
-                et le lundi matin les mots étaient bien appris. Fini les dictées catastrophiques du vendredi !&rdquo;
+                &ldquo;Chaque semaine j&apos;ajoute 5 nouveaux mots à ma liste, et mes élèves peuvent s&apos;entraîner
+                directement depuis le lien WhatsApp. La liste se met à jour automatiquement — je ne prépare plus rien.&rdquo;
               </p>
               <p className="text-xs text-gray-400 mt-2">— Mme Dupont, institutrice CE2 — Lyon</p>
             </div>

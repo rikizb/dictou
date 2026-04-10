@@ -269,8 +269,7 @@ export default function PracticePage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <Mascot size={120} mood="thinking" />
-        <p className="text-gray-600 text-lg font-medium">Génération de la phrase…</p>
-        <p className="text-gray-400 text-sm">Dictou réfléchit 🤔</p>
+        <p className="text-gray-500 text-base font-medium">Génération de la phrase…</p>
       </div>
     );
   }
@@ -348,7 +347,7 @@ export default function PracticePage() {
             </div>
             <div className="flex-1">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                📖 Lis cette phrase à voix haute
+                📖 Phrase à dicter à l'enfant
               </p>
               <p className="text-xl font-medium leading-relaxed">
                 {renderSentenceTokens()}
@@ -360,7 +359,7 @@ export default function PracticePage() {
         {/* ── Évaluation des mots ── */}
         <div className="p-6">
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">
-            Coche les mots bien écrits
+            Coche les mots bien orthographiés
           </h3>
 
           <div className="flex flex-wrap gap-2">
@@ -388,10 +387,7 @@ export default function PracticePage() {
           </div>
 
           <p className="text-xs text-gray-400 mt-3">
-            1 clic = ✅ bien écrit · pas coché = ❌ mal écrit
-          </p>
-          <p className="text-xs text-gray-300 mt-2">
-            <span className="text-purple-500">soulignés</span> = mots de ta liste · <span className="opacity-60">autres</span> = nouveaux capturés
+            Coche tout ce que l'enfant a bien écrit — le reste est noté ❌
           </p>
         </div>
 
@@ -403,7 +399,7 @@ export default function PracticePage() {
           </button>
           <button onClick={continuer}
             className="px-6 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition shadow hover:scale-105">
-            Continuer →
+            Phrase suivante →
           </button>
         </div>
       </div>

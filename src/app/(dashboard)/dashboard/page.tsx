@@ -343,28 +343,36 @@ export default function DashboardPage() {
         animate={{ opacity: 1, y: 0 }}
         className="bg-gradient-to-r from-purple-600 to-indigo-500 rounded-3xl p-6 sm:p-8 text-white shadow-lg"
       >
-        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-          <span className="bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
-            Dictou
-          </span>
+        <p className="text-purple-200 text-sm font-medium uppercase tracking-widest mb-1">Dictou</p>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-snug">
+          {words.length === 0
+            ? "Prêt à lancer la première dictée ?"
+            : `${words.length} mot${words.length > 1 ? "s" : ""} à travailler`}
         </h1>
-        <p className="text-purple-200 mt-1 text-base sm:text-lg">Ta dictée intelligente</p>
 
-        {/* Métriques */}
-        <div className="flex flex-wrap gap-4 mt-4 text-sm font-medium">
-          <span className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1">
-            <span>⭐</span>
-            <span>{wordCounts["2"]} maîtrisés</span>
-          </span>
-          <span className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1">
-            <span>🟠</span>
-            <span>{wordCounts["1"]} en cours</span>
-          </span>
-          <span className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1">
-            <span>🔴</span>
-            <span>{wordCounts["0"]} nouveaux</span>
-          </span>
-        </div>
+        {/* Métriques — seulement si des mots existent */}
+        {words.length > 0 && (
+          <div className="flex flex-wrap gap-3 mt-3 text-sm font-medium">
+            {wordCounts["2"] > 0 && (
+              <span className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1">
+                <span>⭐</span>
+                <span>{wordCounts["2"]} maîtrisé{wordCounts["2"] > 1 ? "s" : ""}</span>
+              </span>
+            )}
+            {wordCounts["1"] > 0 && (
+              <span className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1">
+                <span>🟠</span>
+                <span>{wordCounts["1"]} en cours</span>
+              </span>
+            )}
+            {wordCounts["0"] > 0 && (
+              <span className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1">
+                <span>🔴</span>
+                <span>{wordCounts["0"]} nouveau{wordCounts["0"] > 1 ? "x" : ""}</span>
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Niveau + CTA */}
         <div className="flex flex-wrap items-center gap-3 mt-5">
@@ -510,7 +518,7 @@ export default function DashboardPage() {
           <div className="text-center py-12 text-gray-400 bg-white rounded-2xl border border-gray-100">
             <div className="text-4xl mb-2">📭</div>
             <p className="font-medium">
-              {words.length === 0 ? "Ta liste est vide ! Ajoute des mots ci-dessus." : "Aucun mot dans cette catégorie."}
+              {words.length === 0 ? "Aucun mot pour l'instant." : "Aucun mot dans cette catégorie."}
             </p>
           </div>
         ) : (
@@ -600,7 +608,7 @@ export default function DashboardPage() {
             onClick={() => setShowOwnLists(v => !v)}
             className="text-sm text-purple-600 hover:text-purple-700 underline"
           >
-            {showOwnLists ? "Masquer mes listes" : "📚 Créer et gérer mes propres listes"}
+            {showOwnLists ? "Masquer" : "📋 Mes listes à partager"}
           </button>
         </div>
       </motion.section>

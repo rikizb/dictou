@@ -54,7 +54,7 @@ export default function PublicListClient({ list }: { list: PublicListData }) {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       {/* Bandeau Dictou */}
-      <header className="text-center mb-10">
+      <header className="text-center mb-8">
         <Link
           href="/"
           className="inline-flex items-center gap-2 text-purple-700 font-bold text-xl hover:text-purple-900 transition"
@@ -62,9 +62,6 @@ export default function PublicListClient({ list }: { list: PublicListData }) {
           <span className="text-2xl">✏️</span>
           <span>Dictou</span>
         </Link>
-        <p className="text-gray-500 text-sm mt-1">
-          L'app de dictée pour les enfants
-        </p>
       </header>
 
       {/* Contenu principal */}
@@ -118,16 +115,16 @@ export default function PublicListClient({ list }: { list: PublicListData }) {
           </button>
           {!user && isLoaded && (
             <p className="text-gray-400 text-sm mt-3">
-              Connexion requise — c'est gratuit !
+              Inscription gratuite — moins d'une minute.
             </p>
           )}
         </div>
       </div>
 
       {/* Footer */}
-      <div className="text-center mt-8 text-gray-400 text-sm">
+      <div className="text-center mt-6 text-gray-400 text-xs">
         <Link href="/" className="hover:text-purple-600 transition">
-          Découvrir Dictou
+          dictou.com — dictée IA pour les enfants
         </Link>
       </div>
     </div>
