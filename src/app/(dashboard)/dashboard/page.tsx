@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 // ─── displayLevel helper ──────────────────────────────────────
@@ -83,7 +83,6 @@ const LEVEL_OPTIONS: { key: Level; label: string }[] = [
 
 export default function DashboardPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   // Level persisté
   const [level, setLevel] = useState<Level>("cp");
@@ -147,12 +146,15 @@ export default function DashboardPage() {
 
   // Ouvrir le formulaire de création si ?create=list dans l'URL
   useEffect(() => {
-    if (searchParams.get("create") === "list") {
-      setShowOwnLists(true);
-      setShowNewListForm(true);
-      router.replace("/dashboard");
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("create") === "list") {
+        setShowOwnLists(true);
+        setShowNewListForm(true);
+        router.replace("/dashboard");
+      }
     }
-  }, [searchParams, router]);
+  }, [router]);
 
   useEffect(() => {
     // Import des mots guest si l'utilisateur vient de /jouer
