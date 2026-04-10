@@ -63,12 +63,17 @@ export default function LandingPage() {
             🎯 Générer une dictée
           </Link>
 
-          <p className="mt-5 text-sm text-gray-400">
-            Tu veux rejoindre la liste de ta classe ?{" "}
-            <Link href="/listes" className="text-purple-500 underline underline-offset-2 hover:text-purple-700">
-              Chercher une liste publique →
-            </Link>
-          </p>
+          <div className="mt-5 text-sm text-center">
+            <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
+              <span>🍎</span>
+              <span className="text-gray-600">
+                Tu es enseignant ?{" "}
+                <Link href="/sign-up?redirect_url=/dashboard" className="text-purple-600 font-semibold underline underline-offset-2 hover:text-purple-800">
+                  Crée ta liste et partage-la à ta classe →
+                </Link>
+              </span>
+            </div>
+          </div>
 
           {/* Social proof numbers */}
           <div className="grid grid-cols-3 gap-3 mt-10 mb-2">
