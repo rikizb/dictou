@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Mascot } from "@/components/Mascot";
+import Image from "next/image";
 
 export default function LandingPage() {
   const { isSignedIn, isLoaded } = useUser();
@@ -34,10 +34,9 @@ export default function LandingPage() {
       {
         "@type": "FAQPage",
         "mainEntity": [
-          { "@type": "Question", "name": "Dictou est-il gratuit ?", "acceptedAnswer": { "@type": "Answer", "text": "Oui, Dictou est 100% gratuit et sans inscription pour la dictée rapide. Un compte gratuit permet de sauvegarder la progression." } },
-          { "@type": "Question", "name": "Pour quel âge est Dictou ?", "acceptedAnswer": { "@type": "Answer", "text": "Dictou est adapté aux enfants du CP au CM2, soit de 6 à 11 ans." } },
-          { "@type": "Question", "name": "Les enseignants peuvent-ils utiliser Dictou ?", "acceptedAnswer": { "@type": "Answer", "text": "Oui ! Les enseignants créent une liste dynamique de mots et partagent le lien à toute leur classe. Les parents voient toujours les mots à jour." } },
-          { "@type": "Question", "name": "Faut-il s'inscrire ?", "acceptedAnswer": { "@type": "Answer", "text": "Non, la dictée rapide est accessible sans inscription. L'inscription gratuite permet de sauvegarder ses mots et suivre la progression." } },
+          { "@type": "Question", "name": "Dictou est-il gratuit ?", "acceptedAnswer": { "@type": "Answer", "text": "Oui, Dictou est 100% gratuit. Un compte gratuit permet de créer et partager des listes de mots dynamiques." } },
+          { "@type": "Question", "name": "Les élèves ont-ils besoin d'un compte ?", "acceptedAnswer": { "@type": "Answer", "text": "Non. Les élèves s'entrainent directement via le lien partagé par l'enseignant, sans inscription." } },
+          { "@type": "Question", "name": "Comment partager une liste à mes élèves ?", "acceptedAnswer": { "@type": "Answer", "text": "Créez votre liste, copiez le lien et partagez-le sur WhatsApp, par email ou sur l'ENT. Les élèves accèdent immédiatement." } },
         ],
       },
     ],
@@ -67,82 +66,60 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="max-w-lg w-full"
+            className="max-w-xl w-full"
           >
-            {/* Mascotte */}
-            <div className="flex justify-center mb-4">
-              <Mascot size={90} mood="happy" />
+            {/* Mascotte PNG */}
+            <div className="flex justify-center mb-6">
+              <Image
+                src="/mascot.png"
+                alt="Dictou mascotte"
+                width={110}
+                height={110}
+                priority
+                className="drop-shadow-md"
+              />
             </div>
 
             {/* Titre */}
             <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-3 leading-tight tracking-tight">
-              Fini les dictées ratées.
-              <br />
-              <span className="text-purple-600">L'IA s'adapte à SES mots.</span>
+              La dictée IA<br />
+              <span className="text-purple-600">pour vos élèves.</span>
             </h1>
 
-            <p className="text-lg text-gray-500 mb-5 leading-relaxed">
-              Entre les mots du carnet de dictée, l'IA génère des phrases sur mesure.
-              En 2 minutes, sans inscription.
+            <p className="text-lg text-gray-500 mb-8 leading-relaxed max-w-md mx-auto">
+              Créez votre liste de mots. Partagez le lien à votre classe.
+              <br />Vos élèves s'entrainent jusqu'au <strong className="text-gray-700">10/10</strong>.
             </p>
 
-            <div className="flex flex-wrap justify-center gap-2 mb-8 text-sm font-semibold">
-              <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full">✅ 100% gratuit</span>
-              <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full">⚡ Sans inscription</span>
-              <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full">🔄 Liste dynamique</span>
-            </div>
-
-            {/* Dual CTA */}
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            {/* CTA principal enseignant */}
+            <div className="flex flex-col sm:flex-row gap-3 justify-center mb-4">
               <Link
-                href="/jouer"
+                href="/sign-up?redirect_url=/dashboard?create=list"
                 className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-purple-600 text-white text-lg font-bold rounded-2xl shadow-lg hover:bg-purple-700 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
-                🎯 Générer une dictée maintenant
+                ✏️ Créer ma liste dynamique
               </Link>
               <Link
-                href="/listes"
+                href="/jouer"
                 className="inline-flex items-center justify-center gap-2 px-6 py-4 bg-white text-purple-700 text-base font-semibold rounded-2xl border-2 border-purple-200 hover:border-purple-400 hover:bg-purple-50 transition-all shadow-sm"
               >
-                🏫 Listes de classes
+                🎯 Essayer sans compte
               </Link>
             </div>
-
-            {/* Enseignant hook */}
-            <div className="mt-4 text-sm text-center">
-              <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
-                <span>🍎</span>
-                <span className="text-gray-600">
-                  Tu es enseignant ?{" "}
-                  <Link href="/sign-up?redirect_url=/dashboard" className="text-purple-600 font-semibold underline underline-offset-2 hover:text-purple-800">
-                    Crée ta liste dynamique et partage-la à ta classe →
-                  </Link>
-                </span>
-              </div>
-            </div>
-
-            {/* Testimonial */}
-            <div className="mt-8 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-left">
-              <div className="flex items-center gap-1 mb-2 text-amber-400 text-sm">⭐⭐⭐⭐⭐</div>
-              <p className="text-gray-700 text-sm leading-relaxed italic">
-                &ldquo;J&apos;ai créé une liste pour ma classe de CE2, partagé le lien sur le groupe WhatsApp parents,
-                et le lundi matin les mots étaient bien appris. Fini les dictées du vendredi catastrophiques !&rdquo;
-              </p>
-              <p className="text-xs text-gray-400 mt-2">— Mme Dupont, institutrice CE2 — Lyon</p>
-            </div>
+            <p className="text-xs text-gray-400 mb-10">Gratuit · Sans inscription pour les élèves</p>
 
             {/* Comment ça marche */}
-            <div className="flex items-center gap-4 mt-10 mb-6">
+            <div className="flex items-center gap-4 mb-6">
               <div className="flex-1 h-px bg-gray-200" />
               <span className="text-xs text-gray-400 font-medium uppercase tracking-widest">Comment ça marche</span>
               <div className="flex-1 h-px bg-gray-200" />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left mb-10">
               {[
-                { num: "1", emoji: "📝", title: "Entre les mots", desc: "Les mots du carnet de dictée ou de la liste de classe" },
-                { num: "2", emoji: "🤖", title: "L'IA génère", desc: "Une phrase originale adaptée au niveau de l'enfant" },
-                { num: "3", emoji: "✅", title: "Tu valides", desc: "L'enfant écrit, tu coches les mots bien orthographiés" },
+                { num: "1", emoji: "📝", title: "Créez votre liste", desc: "Ajoutez les mots de la semaine en quelques secondes" },
+                { num: "2", emoji: "🔗", title: "Partagez le lien", desc: "WhatsApp, email, ENT — un lien unique pour toute la classe" },
+                { num: "3", emoji: "🎯", title: "Vos élèves s'entrainent", desc: "L'IA génère des phrases adaptées au niveau, ils visent le 10/10" },
               ].map((s) => (
                 <div key={s.num} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
                   <div className="text-2xl mb-2">{s.emoji}</div>
@@ -150,6 +127,16 @@ export default function LandingPage() {
                   <p className="text-xs text-gray-500">{s.desc}</p>
                 </div>
               ))}
+            </div>
+
+            {/* Testimonial */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-left">
+              <div className="flex items-center gap-1 mb-2 text-amber-400 text-sm">⭐⭐⭐⭐⭐</div>
+              <p className="text-gray-700 text-sm leading-relaxed italic">
+                &ldquo;J&apos;ai créé ma liste de CE2 en 3 minutes, partagé le lien sur le groupe WhatsApp des parents,
+                et le lundi matin les mots étaient bien appris. Fini les dictées catastrophiques du vendredi !&rdquo;
+              </p>
+              <p className="text-xs text-gray-400 mt-2">— Mme Dupont, institutrice CE2 — Lyon</p>
             </div>
           </motion.div>
         </main>

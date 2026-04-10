@@ -400,9 +400,6 @@ export default function DashboardPage() {
       >
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-900">🔄 Mes listes dynamiques</h2>
-          <Link href="/listes" className="text-sm text-purple-600 hover:text-purple-800 font-medium transition">
-            Explorer →
-          </Link>
         </div>
 
         {subscriptions.length === 0 ? (
@@ -411,19 +408,13 @@ export default function DashboardPage() {
             <p className="text-gray-700 font-semibold">Pas encore de liste dynamique</p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
-                href="/listes"
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-purple-600 text-white font-bold text-sm rounded-xl hover:bg-purple-700 transition shadow-sm"
-              >
-                🔍 Rejoindre une liste existante
-              </Link>
-              <Link
                 href="/dashboard?create=list"
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white text-purple-700 font-bold text-sm rounded-xl border-2 border-purple-200 hover:border-purple-400 hover:bg-purple-50 transition"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-purple-600 text-white font-bold text-sm rounded-xl hover:bg-purple-700 transition shadow-sm"
               >
                 ✏️ Créer ma liste à partager
               </Link>
             </div>
-            <p className="text-xs text-gray-400">Tu es enseignant ? Crée ta liste dynamique et partage-la à ta classe.</p>
+            <p className="text-xs text-gray-400">Tu as un lien de liste ? Demande-le à ton enseignant ou crée ta propre liste.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -447,9 +438,7 @@ export default function DashboardPage() {
                 >✕</button>
               </div>
             ))}
-            <Link href="/listes" className="flex items-center justify-center gap-1 py-2 text-sm text-purple-600 hover:text-purple-800 transition font-medium">
-              + Rejoindre une autre liste
-            </Link>
+            <p className="text-center text-xs text-gray-400 pt-1">Pour rejoindre une autre liste, utilise le lien partagé par ton enseignant.</p>
           </div>
         )}
       </motion.section>
