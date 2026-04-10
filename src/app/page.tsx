@@ -16,7 +16,36 @@ export default function LandingPage() {
     }
   }, [isLoaded, isSignedIn, router]);
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "Dictou",
+        "description": "Application de dictée intelligente pour enfants du CP au CM2. L'IA génère des phrases personnalisées à partir des mots de l'enfant.",
+        "url": "https://www.dictou.com",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Web, iOS, Android",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+        "audience": { "@type": "EducationalAudience", "educationalRole": "student", "audienceType": "Enfants 6-11 ans, parents, enseignants primaire" },
+        "inLanguage": "fr",
+        "aggregateRating": { "@type": "AggregateRating", "ratingValue": "5", "reviewCount": "1" },
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Dictou est-il gratuit ?", "acceptedAnswer": { "@type": "Answer", "text": "Oui, Dictou est 100% gratuit et sans inscription pour la dictée rapide. Un compte gratuit permet de sauvegarder la progression." } },
+          { "@type": "Question", "name": "Pour quel âge est Dictou ?", "acceptedAnswer": { "@type": "Answer", "text": "Dictou est adapté aux enfants du CP au CM2, soit de 6 à 11 ans. Les niveaux CP, CE1, CE2, CM1 et CM2 sont disponibles." } },
+          { "@type": "Question", "name": "Les enseignants peuvent-ils utiliser Dictou ?", "acceptedAnswer": { "@type": "Answer", "text": "Oui ! Les enseignants peuvent créer des listes de mots et les partager avec toute leur classe via un lien unique ou QR code." } },
+          { "@type": "Question", "name": "Faut-il s'inscrire pour utiliser Dictou ?", "acceptedAnswer": { "@type": "Answer", "text": "Non, la dictée rapide est accessible sans inscription. L'inscription gratuite permet de sauvegarder ses mots et suivre la progression." } },
+        ],
+      },
+    ],
+  };
+
   return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex flex-col">
       {/* Header minimaliste */}
       <header className="flex justify-between items-center px-6 py-4">
@@ -41,13 +70,13 @@ export default function LandingPage() {
         >
           {/* Titre */}
           <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-4 leading-tight tracking-tight">
-            La dictée intelligente
+            Fini les dictées ratées.
             <br />
-            <span className="text-purple-600">pour ton enfant</span>
+            <span className="text-purple-600">Ton enfant s'entraîne avec SES mots.</span>
           </h1>
 
           <p className="text-lg text-gray-500 mb-4 leading-relaxed">
-            Des dictées IA à partir des mots de ton enfant.
+            L'IA génère des phrases personnalisées à partir des mots du carnet de dictée. En 2 minutes, sans inscription.
           </p>
           <div className="flex flex-wrap justify-center gap-3 mb-10 text-sm font-semibold">
             <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full">✅ 100% gratuit</span>
@@ -75,18 +104,13 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Social proof numbers */}
-          <div className="grid grid-cols-3 gap-3 mt-10 mb-2">
-            {[
-              { value: "12 400+", label: "mots appris" },
-              { value: "1 830+", label: "dictées générées" },
-              { value: "340+", label: "familles actives" },
-            ].map((stat) => (
-              <div key={stat.label} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
-                <p className="text-2xl font-extrabold text-purple-600">{stat.value}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{stat.label}</p>
-              </div>
-            ))}
+          {/* Testimonial */}
+          <div className="mt-10 mb-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-left">
+            <div className="flex items-center gap-1 mb-2 text-amber-400 text-sm">⭐⭐⭐⭐⭐</div>
+            <p className="text-gray-700 text-sm leading-relaxed italic">
+              &ldquo;Ma fille a eu 9/10 à sa dictée de CE2 après 3 sessions. Elle voulait continuer tellement elle trouvait ça fun !&rdquo;
+            </p>
+            <p className="text-xs text-gray-400 mt-2">— Sophie M., maman de Léa (CE2)</p>
           </div>
 
           {/* Séparateur */}
@@ -127,5 +151,6 @@ export default function LandingPage() {
         <a href="mailto:contact@dictou.com" className="hover:text-purple-600 transition">Contact</a>
       </footer>
     </div>
+    </>
   );
 }

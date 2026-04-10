@@ -112,7 +112,7 @@ export default function DashboardPage() {
   const [wordInput, setWordInput] = useState("");
   const [adding, setAdding] = useState(false);
   const [wordFilter, setWordFilter] = useState<"all" | "0" | "1" | "2">("all");
-  const [showOwnLists, setShowOwnLists] = useState(false);
+  const [showOwnLists, setShowOwnLists] = useState(true);
   const [shareModal, setShareModal] = useState<{ id: string; slug: string; name: string; isPublic: boolean } | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -175,6 +175,35 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
+    // Import des mots guest si l'utilisateur vient de /jouer
+    const guestRaw = typeof window !== "undefined" ? localStorage.getItem("guest_words") : null;
+    if (guestRaw) {
+      try {
+        const guestWords: { text: string }[] = JSON.parse(guestRaw);
+        if (guestWords.length > 0) {
+          const texts = guestWords.map((w) => w.text);
+          fetch("/api/words/bulk", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ words: texts }),
+          })
+            .then((r) => r.json())
+            .then((data) => {
+              if (data.addedCount > 0) {
+                toast.success(`✨ ${data.addedCount} mot${data.addedCount > 1 ? "s" : ""} importé${data.addedCount > 1 ? "s" : ""} depuis ta session !`);
+                loadWords();
+              }
+              localStorage.removeItem("guest_words");
+            })
+            .catch(() => localStorage.removeItem("guest_words"));
+        } else {
+          localStorage.removeItem("guest_words");
+        }
+      } catch {
+        localStorage.removeItem("guest_words");
+      }
+    }
+
     loadWords();
     loadSubscriptions();
     loadMyLists();

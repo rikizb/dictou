@@ -199,12 +199,14 @@ export default function JouerPage() {
           <span>✏️</span>
           <span>Dictou</span>
         </Link>
-        <Link
-          href="/sign-up?redirect_url=/dashboard"
-          className="px-4 py-2 bg-purple-600 text-white text-sm font-semibold rounded-xl hover:bg-purple-700 transition shadow-sm"
-        >
-          Sauvegarder ma progression →
-        </Link>
+        {totalDone >= 1 && (
+          <Link
+            href="/sign-up?redirect_url=/dashboard"
+            className="px-4 py-2 bg-purple-600 text-white text-sm font-semibold rounded-xl hover:bg-purple-700 transition shadow-sm animate-pulse"
+          >
+            Sauvegarder mes {totalDone} phrase{totalDone > 1 ? "s" : ""} →
+          </Link>
+        )}
       </header>
 
       {/* Main */}
@@ -219,8 +221,8 @@ export default function JouerPage() {
               className="space-y-5"
             >
               <div className="text-center">
-                <h1 className="text-3xl font-bold text-gray-900">🎯 Dictée sans compte</h1>
-                <p className="text-gray-500 mt-1">Ajoute tes mots et c'est parti !</p>
+                <h1 className="text-3xl font-bold text-gray-900">🎯 Dictée rapide</h1>
+                <p className="text-gray-500 mt-1">Entre les mots de ton enfant et c'est parti !</p>
               </div>
 
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
