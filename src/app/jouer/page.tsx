@@ -282,9 +282,11 @@ export default function JouerPage() {
     }
   }, [guestWords]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Sauvegarder les mots dans localStorage (pour import lors de la création de compte)
+  // Sauvegarder les mots dans localStorage (seulement en mode personnel, pas les mots démo)
   useEffect(() => {
-    localStorage.setItem(GUEST_WORDS_KEY, JSON.stringify(guestWords));
+    if (!isDemoMode) {
+      localStorage.setItem(GUEST_WORDS_KEY, JSON.stringify(guestWords));
+    }
   }, [guestWords, isDemoMode]);
 
   const addWord = () => {
