@@ -4,7 +4,7 @@ import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 
 const GUEST_WORDS_KEY = "guest_words";
@@ -20,6 +20,7 @@ export default function PublicListClient({ list }: { list: PublicListData }) {
   const { user, isLoaded } = useUser();
   const router = useRouter();
   const [subscribing, setSubscribing] = useState(false);
+  const autoJoinDone = useRef(false);
 
   // S'entraîner immédiatement sans compte : charge les mots dans localStorage
   const handlePracticeNow = () => {
@@ -32,24 +33,13 @@ export default function PublicListClient({ list }: { list: PublicListData }) {
     router.push("/jouer");
   };
 
-  const handleSaveToAccount = async () => {
-    if (!isLoaded) return;
-
-    if (!user) {
-      router.push(
-        `/sign-in?redirect_url=${encodeURIComponent(`/liste/${list.slug}`)}`
-      );
-      return;
-    }
-
+  const doSubscribe = async () => {
     setSubscribing(true);
     try {
       const r = await fetch(`/api/public/lists/${list.slug}/copy`, {
         method: "POST",
       });
-
       if (!r.ok) throw new Error("Erreur");
-
       const data = await r.json() as { addedCount: number; skippedCount: number };
       toast.success(
         data.addedCount > 0
@@ -62,6 +52,27 @@ export default function PublicListClient({ list }: { list: PublicListData }) {
     } finally {
       setSubscribing(false);
     }
+  };
+
+  // Auto-rejoindre si ?join=1 dans l'URL (après inscription via ce lien)
+  useEffect(() => {
+    if (!isLoaded || !user || autoJoinDone.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("join") === "1") {
+      autoJoinDone.current = true;
+      doSubscribe();
+    }
+  }, [isLoaded, user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSaveToAccount = async () => {
+    if (!isLoaded) return;
+    if (!user) {
+      router.push(
+        `/sign-up?redirect_url=${encodeURIComponent(`/liste/${list.slug}?join=1`)}`
+      );
+      return;
+    }
+    await doSubscribe();
   };
 
   return (

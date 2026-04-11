@@ -420,14 +420,14 @@ export default function DashboardPage() {
                     value={newListName}
                     onChange={(e) => setNewListName(e.target.value)}
                     maxLength={60}
-                    placeholder="Ex : Mots CE2 — semaine 12"
+                    placeholder="Ex : CP-A 2025-26 Mme Dupont"
                     className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
                     onKeyDown={(e) => { if (e.key === "Enter" && e.metaKey) handleCreateList(); }}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Mots <span className="text-gray-400">(optionnel, séparés par des virgules)</span>
+                    Mots <span className="text-gray-400">(séparés par des virgules ou retour à la ligne)</span>
                   </label>
                   <textarea
                     value={newListWords}
@@ -481,7 +481,7 @@ export default function DashboardPage() {
           <div className="bg-white rounded-2xl border-2 border-dashed border-purple-200 p-8 text-center space-y-3">
             <div className="text-4xl">📋</div>
             <p className="text-gray-700 font-semibold">Pas encore de liste</p>
-            <p className="text-sm text-gray-500">Créez votre première liste et partagez-la à votre classe, ou collez un lien ci-dessus pour rejoindre la liste d'un enseignant.</p>
+            <p className="text-sm text-gray-500">Créez votre première liste et partagez-la à votre classe, ou collez un lien ci-dessus pour rejoindre une liste existante.</p>
           </div>
         )}
 

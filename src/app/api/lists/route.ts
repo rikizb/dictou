@@ -96,6 +96,13 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Auto-abonner le créateur à sa propre liste
+  await prisma.wordListSubscription.upsert({
+    where: { userId_listId: { userId: user.id, listId: list.id } },
+    update: {},
+    create: { userId: user.id, listId: list.id },
+  });
+
   return NextResponse.json(
     {
       list: {
