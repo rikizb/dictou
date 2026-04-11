@@ -320,7 +320,11 @@ export default function DashboardPage() {
     wordFilter === "2" ? words.filter((w) => w.level >= 2) :
     words.filter((w) => w.level.toString() === wordFilter);
 
-  const hasNoLists = myLists.length === 0 && subscriptions.length === 0;
+  // Exclure les listes créées par l'utilisateur de la section "Rejointes"
+  const ownListIds = new Set(myLists.map((l) => l.id));
+  const externalSubscriptions = subscriptions.filter((s) => !ownListIds.has(s.list.id));
+
+  const hasNoLists = myLists.length === 0 && externalSubscriptions.length === 0;
 
   // ─── Render ────────────────────────────────────────────────
 
@@ -488,7 +492,7 @@ export default function DashboardPage() {
         {/* Mes listes créées */}
         {myLists.length > 0 && (
           <div className="space-y-2">
-            {subscriptions.length > 0 && (
+            {externalSubscriptions.length > 0 && (
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">Créées par moi</p>
             )}
             {listsLoading
@@ -520,12 +524,12 @@ export default function DashboardPage() {
         )}
 
         {/* Listes rejointes */}
-        {subscriptions.length > 0 && (
+        {externalSubscriptions.length > 0 && (
           <div className="space-y-2">
             {myLists.length > 0 && (
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1 pt-1">Rejointes</p>
             )}
-            {subscriptions.map((sub) => (
+            {externalSubscriptions.map((sub) => (
               <div key={sub.listId} className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                 <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-lg shrink-0">📋</div>
                 <div className="flex-1 min-w-0">
