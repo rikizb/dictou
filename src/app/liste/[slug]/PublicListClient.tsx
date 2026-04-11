@@ -4,7 +4,7 @@ import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import Link from "next/link";
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import Image from "next/image";
 
 const GUEST_WORDS_KEY = "guest_words";
@@ -20,7 +20,6 @@ export default function PublicListClient({ list }: { list: PublicListData }) {
   const { user, isLoaded } = useUser();
   const router = useRouter();
   const [subscribing, setSubscribing] = useState(false);
-  const autoJoinDone = useRef(false);
 
   // S'entraîner immédiatement sans compte : charge les mots dans localStorage
   const handlePracticeNow = () => {
@@ -54,22 +53,12 @@ export default function PublicListClient({ list }: { list: PublicListData }) {
     }
   };
 
-  // Auto-rejoindre si ?join=1 dans l'URL (après inscription via ce lien)
-  useEffect(() => {
-    if (!isLoaded || !user || autoJoinDone.current) return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("join") === "1") {
-      autoJoinDone.current = true;
-      doSubscribe();
-    }
-  }, [isLoaded, user]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const handleSaveToAccount = async () => {
     if (!isLoaded) return;
     if (!user) {
-      router.push(
-        `/sign-up?redirect_url=${encodeURIComponent(`/liste/${list.slug}?join=1`)}`
-      );
+      // Stocker le slug pour auto-rejoindre après l'inscription
+      try { localStorage.setItem("dictou_pending_join", list.slug); } catch { /* ignore */ }
+      router.push(`/sign-up?redirect_url=${encodeURIComponent("/dashboard")}`);
       return;
     }
     await doSubscribe();

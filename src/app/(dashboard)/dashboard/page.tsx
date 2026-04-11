@@ -182,6 +182,22 @@ export default function DashboardPage() {
     loadSubscriptions();
     loadMyLists();
 
+    // Auto-rejoindre une liste si l'utilisateur vient de créer un compte depuis une liste partagée
+    const pendingJoin = typeof window !== "undefined" ? localStorage.getItem("dictou_pending_join") : null;
+    if (pendingJoin) {
+      localStorage.removeItem("dictou_pending_join");
+      fetch(`/api/public/lists/${pendingJoin}/copy`, { method: "POST" })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.addedCount >= 0) {
+            toast.success(`Liste rejointe ! ${data.addedCount > 0 ? `${data.addedCount} mot${data.addedCount > 1 ? "s" : ""} ajouté${data.addedCount > 1 ? "s" : ""}.` : "Déjà abonné."}`);
+            loadSubscriptions();
+            loadWords();
+          }
+        })
+        .catch(() => {});
+    }
+
     // Sync silencieux
     fetch("/api/sync", { method: "POST" })
       .then((r) => r.json())
