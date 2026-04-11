@@ -111,9 +111,6 @@ export default function DashboardPage() {
   const [linkInput, setLinkInput] = useState("");
   const [linkSubscribing, setLinkSubscribing] = useState(false);
 
-  // Share modal
-  const [shareModal, setShareModal] = useState<{ id: string; slug: string; name: string; isPublic: boolean } | null>(null);
-
   // ─── Load data ─────────────────────────────────────────────
 
   const loadWords = useCallback(async () => {
@@ -306,7 +303,7 @@ export default function DashboardPage() {
 
   const copyListLink = (slug: string) => {
     navigator.clipboard.writeText(`https://www.dictou.com/liste/${slug}`);
-    toast.success("Lien copié !");
+    toast.success("Lien copié ! Envoyez-le à vos élèves 🔗");
   };
 
   // ─── Computed ──────────────────────────────────────────────
@@ -675,34 +672,6 @@ export default function DashboardPage() {
           <p className="text-xs text-gray-400 text-center">Cliquer sur le badge de niveau pour le modifier</p>
         )}
       </motion.section>
-
-      {/* ══ MODAL PARTAGE ══ */}
-      {shareModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full space-y-4"
-          >
-            <h3 className="text-lg font-bold text-gray-900">🔗 Partager la liste</h3>
-            <p className="text-sm text-gray-600 font-medium">"{shareModal.name}"</p>
-            <div className="bg-gray-50 rounded-xl px-3 py-2 text-sm text-gray-700 break-all font-mono">
-              https://www.dictou.com/liste/{shareModal.slug}
-            </div>
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={() => { copyListLink(shareModal.slug); setShareModal(null); }}
-                className="w-full py-2.5 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition text-sm"
-              >
-                📋 Copier le lien
-              </button>
-              <button onClick={() => setShareModal(null)} className="w-full py-2 text-gray-500 hover:text-gray-700 text-sm transition">
-                Fermer
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
 
     </div>
   );
