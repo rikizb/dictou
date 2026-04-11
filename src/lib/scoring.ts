@@ -34,14 +34,17 @@ export function computePriorityScore(word: Word): number {
   const difficultyScores = [40, 30, 10, 2];
   const difficultyScore = difficultyScores[Math.min(word.level, 3)];
 
-  // Bonus "pas vu depuis longtemps"
+  // Bonus/pénalité selon la fraîcheur du mot
   let staleness = 0;
   if (word.lastSeenAt) {
-    const daysSinceSeen =
-      (now.getTime() - word.lastSeenAt.getTime()) / (1000 * 60 * 60 * 24);
-    if (daysSinceSeen > 7) staleness = 10;
+    const minutesSinceSeen = (now.getTime() - word.lastSeenAt.getTime()) / (1000 * 60);
+    const daysSinceSeen = minutesSinceSeen / (60 * 24);
+    if (minutesSinceSeen < 30) staleness = -40;      // vu dans les 30 dernières minutes → forte pénalité
+    else if (minutesSinceSeen < 120) staleness = -20; // vu dans les 2 dernières heures → pénalité
+    else if (daysSinceSeen < 1) staleness = -5;       // vu aujourd'hui → légère pénalité
+    else if (daysSinceSeen > 7) staleness = 10;       // pas vu depuis 1 semaine → bonus
   } else {
-    staleness = 10; // jamais vu dans une phrase
+    staleness = 10; // jamais vu dans une phrase → bonus
   }
 
   return recencyScore + difficultyScore + staleness;
@@ -56,8 +59,8 @@ export function selectPriorityWords(words: Word[], n: number = 3): Word[] {
 
   // Tri par score décroissant, avec un peu d'aléatoire pour éviter la répétition
   scored.sort((a, b) => {
-    // Ajout d'un bruit aléatoire de ±10% pour varier les phrases
-    const noise = (Math.random() - 0.5) * 20;
+    // Ajout d'un bruit aléatoire de ±15 pour varier les phrases
+    const noise = (Math.random() - 0.5) * 30;
     return b.score - a.score + noise;
   });
 

@@ -103,10 +103,10 @@ export default function LandingPage() {
                 href="/jouer"
                 className="inline-flex items-center justify-center gap-2 px-6 py-4 bg-white text-purple-700 text-base font-semibold rounded-2xl border-2 border-purple-200 hover:border-purple-400 hover:bg-purple-50 transition-all shadow-sm"
               >
-                🎯 Essayer sans compte
+                🎯 Dictée rapide
               </Link>
             </div>
-            <p className="text-xs text-gray-400 mb-10">Gratuit · Sans inscription pour les élèves</p>
+            <p className="text-xs text-gray-400 mb-10">Gratuit</p>
 
             {/* Comment ça marche */}
             <div className="flex items-center gap-4 mb-6">
@@ -118,8 +118,8 @@ export default function LandingPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left mb-10">
               {[
                 { num: "1", emoji: "📝", title: "Créez votre liste", desc: "Ajoutez les mots de la semaine en quelques secondes" },
-                { num: "2", emoji: "🔗", title: "Partagez le lien", desc: "WhatsApp, email, ENT — un lien unique pour toute la classe" },
-                { num: "3", emoji: "🎯", title: "Vos élèves s'entrainent", desc: "L'IA génère des phrases adaptées au niveau, ils visent le 10/10" },
+                { num: "2", emoji: "🔗", title: "Partagez le lien", desc: "WhatsApp, SMS, email — un lien unique pour toute la classe" },
+                { num: "3", emoji: "🎯", title: "Vos élèves s'entrainent", desc: "L'IA génère des phrases sur-mesure. Chaque enfant progresse à son rythme." },
               ].map((s) => (
                 <div key={s.num} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
                   <div className="text-2xl mb-2">{s.emoji}</div>

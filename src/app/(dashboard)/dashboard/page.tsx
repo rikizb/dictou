@@ -5,14 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
-// ─── displayLevel helper ──────────────────────────────────────
+
 function displayLevel(level: number): { emoji: string; label: string; color: string } {
   if (level === 0) return { emoji: "🔴", label: "Nouveau", color: "bg-red-100 text-red-700 border-red-200" };
   if (level === 1) return { emoji: "🟠", label: "En cours", color: "bg-orange-100 text-orange-700 border-orange-200" };
   return { emoji: "⭐", label: "Maîtrisé", color: "bg-yellow-100 text-yellow-700 border-yellow-200" };
 }
-
-// ─── Interfaces ───────────────────────────────────────────────
 
 interface Word {
   id: string;
@@ -55,21 +53,19 @@ interface WordListSummary {
   updatedAt: string;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────
-
-function originLabel(word: Word): { text: string; title: string } {
-  if (word.sourceList) return { text: `📋 ${word.sourceList.name}`, title: `Depuis la liste "${word.sourceList.name}"` };
-  if (word.source === "CAPTURED") return { text: "✨ Dictou", title: "Capturé pendant une dictée" };
-  return { text: "✏️ Manuel", title: "Ajouté manuellement" };
-}
-
 function successRate(word: Word): string {
   if (word.timesSeenInSentence === 0) return "—";
   return `${Math.round((word.timesCorrect / word.timesSeenInSentence) * 100)}%`;
 }
 
-const LEVEL_KEY = "dictou_level";
+function extractSlug(input: string): string {
+  // Accepte : https://dictou.com/liste/mon-slug, /liste/mon-slug, ou juste mon-slug
+  const match = input.match(/\/liste\/([^/?#\s]+)/);
+  if (match) return match[1].trim();
+  return input.trim();
+}
 
+const LEVEL_KEY = "dictou_level";
 type Level = "cp" | "ce1" | "ce2" | "cm1" | "cm2";
 const LEVEL_OPTIONS: { key: Level; label: string }[] = [
   { key: "cp", label: "CP" },
@@ -78,8 +74,6 @@ const LEVEL_OPTIONS: { key: Level; label: string }[] = [
   { key: "cm1", label: "CM1" },
   { key: "cm2", label: "CM2" },
 ];
-
-// ─── Composant principal ──────────────────────────────────────
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -95,19 +89,14 @@ export default function DashboardPage() {
     localStorage.setItem(LEVEL_KEY, l);
   };
 
-  // Words state
+  // Words
   const [words, setWords] = useState<Word[]>([]);
   const [wordsLoading, setWordsLoading] = useState(true);
-  const [wordInput, setWordInput] = useState("");
-  const [adding, setAdding] = useState(false);
   const [wordFilter, setWordFilter] = useState<"all" | "0" | "1" | "2">("all");
-  const [showOwnLists, setShowOwnLists] = useState(true);
-  const [shareModal, setShareModal] = useState<{ id: string; slug: string; name: string; isPublic: boolean } | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const wordInputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Subscriptions state
+  // Subscriptions
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
 
   // My lists
@@ -117,6 +106,13 @@ export default function DashboardPage() {
   const [newListName, setNewListName] = useState("");
   const [newListWords, setNewListWords] = useState("");
   const [creatingList, setCreatingList] = useState(false);
+
+  // Subscribe by link
+  const [linkInput, setLinkInput] = useState("");
+  const [linkSubscribing, setLinkSubscribing] = useState(false);
+
+  // Share modal
+  const [shareModal, setShareModal] = useState<{ id: string; slug: string; name: string; isPublic: boolean } | null>(null);
 
   // ─── Load data ─────────────────────────────────────────────
 
@@ -144,12 +140,11 @@ export default function DashboardPage() {
     setListsLoading(false);
   }, []);
 
-  // Ouvrir le formulaire de création si ?create=list dans l'URL
+  // Ouvrir le formulaire si ?create=list
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       if (params.get("create") === "list") {
-        setShowOwnLists(true);
         setShowNewListForm(true);
         router.replace("/dashboard");
       }
@@ -157,7 +152,7 @@ export default function DashboardPage() {
   }, [router]);
 
   useEffect(() => {
-    // Import des mots guest si l'utilisateur vient de /jouer
+    // Import mots guest depuis /jouer
     const guestRaw = typeof window !== "undefined" ? localStorage.getItem("guest_words") : null;
     if (guestRaw) {
       try {
@@ -172,7 +167,7 @@ export default function DashboardPage() {
             .then((r) => r.json())
             .then((data) => {
               if (data.addedCount > 0) {
-                toast.success(`✨ ${data.addedCount} mot${data.addedCount > 1 ? "s" : ""} importé${data.addedCount > 1 ? "s" : ""} depuis ta session !`);
+                toast.success(`✨ ${data.addedCount} mot${data.addedCount > 1 ? "s" : ""} importés depuis ta session !`);
                 loadWords();
               }
               localStorage.removeItem("guest_words");
@@ -190,7 +185,7 @@ export default function DashboardPage() {
     loadSubscriptions();
     loadMyLists();
 
-    // Sync silencieux au chargement
+    // Sync silencieux
     fetch("/api/sync", { method: "POST" })
       .then((r) => r.json())
       .then((data) => {
@@ -203,35 +198,10 @@ export default function DashboardPage() {
   }, [loadWords, loadSubscriptions, loadMyLists]);
 
   useEffect(() => {
-    return () => {
-      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
-    };
+    return () => { if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current); };
   }, []);
 
-  // ─── Words handlers ────────────────────────────────────────
-
-  const handleAddWords = async () => {
-    if (!wordInput.trim()) return;
-    const newWords = wordInput.split(/[,;\n]+/).map((w) => w.trim()).filter((w) => w.length > 0);
-    if (newWords.length === 0) return;
-    setAdding(true);
-    try {
-      const r = await fetch("/api/words", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ words: newWords }),
-      });
-      if (!r.ok) throw new Error("Erreur");
-      const data = await r.json();
-      setWordInput("");
-      await loadWords();
-      toast.success(`${data.words.length} mot${data.words.length > 1 ? "s" : ""} ajouté${data.words.length > 1 ? "s" : ""} !`);
-    } catch {
-      toast.error("Erreur lors de l'ajout");
-    } finally {
-      setAdding(false);
-    }
-  };
+  // ─── Handlers mots ─────────────────────────────────────────
 
   const handleLevelChange = useCallback(async (wordId: string, currentLevel: number) => {
     const newLevel = currentLevel >= 2 ? 0 : currentLevel + 1;
@@ -274,10 +244,10 @@ export default function DashboardPage() {
     }
   }, [loadWords]);
 
-  // ─── Subscriptions handlers ────────────────────────────────
+  // ─── Handlers listes ───────────────────────────────────────
 
   const handleUnsubscribe = async (listId: string, listName: string) => {
-    if (!confirm(`Se désabonner de "${listName}" ? Les mots déjà copiés restent dans ta liste.`)) return;
+    if (!confirm(`Se désabonner de "${listName}" ?`)) return;
     try {
       const r = await fetch(`/api/subscriptions/${listId}`, { method: "DELETE" });
       if (!r.ok) throw new Error();
@@ -287,8 +257,6 @@ export default function DashboardPage() {
       toast.error("Erreur lors du désabonnement");
     }
   };
-
-  // ─── My lists handlers ─────────────────────────────────────
 
   const handleCreateList = async () => {
     if (!newListName.trim()) return;
@@ -317,6 +285,29 @@ export default function DashboardPage() {
     }
   };
 
+  const handleSubscribeByLink = async () => {
+    const slug = extractSlug(linkInput);
+    if (!slug) { toast.error("Lien invalide"); return; }
+    setLinkSubscribing(true);
+    try {
+      const r = await fetch(`/api/public/lists/${slug}/copy`, { method: "POST" });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "Liste introuvable");
+      toast.success(`Abonné ! ${data.addedCount} mot${data.addedCount !== 1 ? "s" : ""} ajouté${data.addedCount !== 1 ? "s" : ""}.`);
+      setLinkInput("");
+      await loadSubscriptions();
+      await loadWords();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Lien invalide ou liste introuvable");
+    } finally {
+      setLinkSubscribing(false);
+    }
+  };
+
+  const copyListLink = (slug: string) => {
+    navigator.clipboard.writeText(`https://www.dictou.com/liste/${slug}`);
+    toast.success("Lien copié !");
+  };
 
   // ─── Computed ──────────────────────────────────────────────
 
@@ -332,14 +323,14 @@ export default function DashboardPage() {
     wordFilter === "2" ? words.filter((w) => w.level >= 2) :
     words.filter((w) => w.level.toString() === wordFilter);
 
+  const hasNoLists = myLists.length === 0 && subscriptions.length === 0;
+
   // ─── Render ────────────────────────────────────────────────
 
   return (
     <div className="space-y-8">
 
-      {/* ══════════════════════════════════════════════════
-          1. HERO CARD
-      ══════════════════════════════════════════════════ */}
+      {/* ══ 1. HERO ══ */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -352,31 +343,26 @@ export default function DashboardPage() {
             : `${words.length} mot${words.length > 1 ? "s" : ""} à travailler`}
         </h1>
 
-        {/* Métriques — seulement si des mots existent */}
         {words.length > 0 && (
           <div className="flex flex-wrap gap-3 mt-3 text-sm font-medium">
             {wordCounts["2"] > 0 && (
               <span className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1">
-                <span>⭐</span>
-                <span>{wordCounts["2"]} maîtrisé{wordCounts["2"] > 1 ? "s" : ""}</span>
+                <span>⭐</span><span>{wordCounts["2"]} maîtrisé{wordCounts["2"] > 1 ? "s" : ""}</span>
               </span>
             )}
             {wordCounts["1"] > 0 && (
               <span className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1">
-                <span>🟠</span>
-                <span>{wordCounts["1"]} en cours</span>
+                <span>🟠</span><span>{wordCounts["1"]} en cours</span>
               </span>
             )}
             {wordCounts["0"] > 0 && (
               <span className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1">
-                <span>🔴</span>
-                <span>{wordCounts["0"]} nouveau{wordCounts["0"] > 1 ? "x" : ""}</span>
+                <span>🔴</span><span>{wordCounts["0"]} nouveau{wordCounts["0"] > 1 ? "x" : ""}</span>
               </span>
             )}
           </div>
         )}
 
-        {/* Niveau + CTA */}
         <div className="flex flex-wrap items-center gap-3 mt-5">
           <div className="flex items-center gap-2 bg-white/20 rounded-xl px-3 py-2">
             <span className="text-xs text-purple-200 font-medium">Niveau</span>
@@ -399,48 +385,166 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
-      {/* ══════════════════════════════════════════════════
-          2. MES LISTES DYNAMIQUES (abonnements)
-      ══════════════════════════════════════════════════ */}
+      {/* ══ 2. MES LISTES (fusionné) ══ */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
+        transition={{ delay: 0.1 }}
         className="space-y-3"
       >
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-900">🔄 Mes listes dynamiques</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-bold text-gray-900">📋 Mes listes</h2>
+          <button
+            onClick={() => setShowNewListForm(v => !v)}
+            className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition shadow-sm text-sm"
+          >
+            + Créer ma liste
+          </button>
         </div>
 
-        {subscriptions.length === 0 ? (
-          <div className="bg-white rounded-2xl border-2 border-dashed border-purple-200 p-6 text-center space-y-4">
-            <div className="text-4xl">🏫</div>
-            <p className="text-gray-700 font-semibold">Pas encore de liste dynamique</p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link
-                href="/dashboard?create=list"
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-purple-600 text-white font-bold text-sm rounded-xl hover:bg-purple-700 transition shadow-sm"
-              >
-                ✏️ Créer ma liste à partager
-              </Link>
-            </div>
-            <p className="text-xs text-gray-400">Tu as un lien de liste ? Demande-le à ton enseignant ou crée ta propre liste.</p>
+        {/* Formulaire création */}
+        <AnimatePresence>
+          {showNewListForm && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="bg-white rounded-2xl border border-purple-100 shadow-sm p-5 space-y-4">
+                <h3 className="font-semibold text-gray-800">Nouvelle liste partageable</h3>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nom <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    autoFocus
+                    type="text"
+                    value={newListName}
+                    onChange={(e) => setNewListName(e.target.value)}
+                    maxLength={60}
+                    placeholder="Ex : Mots CE2 — semaine 12"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
+                    onKeyDown={(e) => { if (e.key === "Enter" && e.metaKey) handleCreateList(); }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Mots <span className="text-gray-400">(optionnel, séparés par des virgules)</span>
+                  </label>
+                  <textarea
+                    value={newListWords}
+                    onChange={(e) => setNewListWords(e.target.value)}
+                    placeholder="grenouille, papillon, anniversaire..."
+                    rows={2}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleCreateList}
+                    disabled={creatingList || !newListName.trim()}
+                    className="px-5 py-2 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm"
+                  >
+                    {creatingList ? "Création…" : "Créer"}
+                  </button>
+                  <button
+                    onClick={() => { setShowNewListForm(false); setNewListName(""); setNewListWords(""); }}
+                    className="px-5 py-2 text-gray-600 font-medium rounded-xl hover:bg-gray-100 transition text-sm"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Rejoindre par lien */}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={linkInput}
+            onChange={(e) => setLinkInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSubscribeByLink(); }}
+            placeholder="Coller un lien de liste pour la rejoindre…"
+            className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white"
+          />
+          <button
+            onClick={handleSubscribeByLink}
+            disabled={linkSubscribing || !linkInput.trim()}
+            className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl hover:border-purple-400 hover:text-purple-700 disabled:opacity-50 transition text-sm shrink-0"
+          >
+            {linkSubscribing ? "⏳" : "Rejoindre"}
+          </button>
+        </div>
+
+        {/* État vide */}
+        {!listsLoading && hasNoLists && (
+          <div className="bg-white rounded-2xl border-2 border-dashed border-purple-200 p-8 text-center space-y-3">
+            <div className="text-4xl">📋</div>
+            <p className="text-gray-700 font-semibold">Pas encore de liste</p>
+            <p className="text-sm text-gray-500">Créez votre première liste et partagez-la à votre classe, ou collez un lien ci-dessus pour rejoindre la liste d'un enseignant.</p>
           </div>
-        ) : (
+        )}
+
+        {/* Mes listes créées */}
+        {myLists.length > 0 && (
           <div className="space-y-2">
+            {subscriptions.length > 0 && (
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">Créées par moi</p>
+            )}
+            {listsLoading
+              ? [...Array(2)].map((_, i) => <div key={i} className="bg-white rounded-2xl h-16 animate-pulse" />)
+              : myLists.map((list) => (
+                <div key={list.id} className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                  <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center text-lg shrink-0">📝</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-800 text-sm truncate">{list.name}</p>
+                    <p className="text-xs text-gray-400">{list.itemCount} mot{list.itemCount !== 1 ? "s" : ""}{list.copyCount > 0 ? ` · ${list.copyCount} abonné${list.copyCount > 1 ? "s" : ""}` : ""}</p>
+                  </div>
+                  <Link
+                    href={`/listes/${list.id}`}
+                    className="shrink-0 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition"
+                  >
+                    Modifier
+                  </Link>
+                  <button
+                    onClick={() => copyListLink(list.slug)}
+                    title="Copier le lien de partage"
+                    className="shrink-0 px-3 py-1.5 text-xs font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition"
+                  >
+                    🔗 Lien
+                  </button>
+                </div>
+              ))
+            }
+          </div>
+        )}
+
+        {/* Listes rejointes */}
+        {subscriptions.length > 0 && (
+          <div className="space-y-2">
+            {myLists.length > 0 && (
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1 pt-1">Rejointes</p>
+            )}
             {subscriptions.map((sub) => (
               <div key={sub.listId} className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-                <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center text-lg shrink-0">📋</div>
+                <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-lg shrink-0">📋</div>
                 <div className="flex-1 min-w-0">
-                  <a href={`/liste/${sub.list.slug}`} target="_blank" rel="noopener noreferrer"
-                    className="font-semibold text-gray-800 hover:text-purple-700 transition truncate block text-sm">
-                    {sub.list.name}
-                  </a>
+                  <p className="font-semibold text-gray-800 text-sm truncate">{sub.list.name}</p>
                   <p className="text-xs text-gray-400">{sub.list.itemCount} mot{sub.list.itemCount !== 1 ? "s" : ""}</p>
                 </div>
                 <span className="shrink-0 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-lg">
                   Abonné ✓
                 </span>
+                <button
+                  onClick={() => copyListLink(sub.list.slug)}
+                  title="Copier le lien"
+                  className="shrink-0 px-3 py-1.5 text-xs font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition"
+                >
+                  🔗 Lien
+                </button>
                 <button
                   onClick={() => handleUnsubscribe(sub.listId, sub.list.name)}
                   className="px-2 py-1 text-xs text-gray-300 hover:text-red-400 rounded-lg transition shrink-0"
@@ -448,48 +552,18 @@ export default function DashboardPage() {
                 >✕</button>
               </div>
             ))}
-            <p className="text-center text-xs text-gray-400 pt-1">Pour rejoindre une autre liste, utilise le lien partagé par ton enseignant.</p>
           </div>
         )}
       </motion.section>
 
-      {/* ══════════════════════════════════════════════════
-          3. MES MOTS
-      ══════════════════════════════════════════════════ */}
+      {/* ══ 3. MES MOTS (lecture seule) ══ */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
         className="space-y-4"
       >
-        {/* En-tête */}
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-lg font-bold text-gray-900">
-            📚 Mes mots ({words.length})
-          </h2>
-        </div>
-
-        {/* Formulaire ajout compact */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-          <div className="flex gap-2">
-            <textarea
-              ref={wordInputRef}
-              value={wordInput}
-              onChange={(e) => setWordInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && e.metaKey) handleAddWords(); }}
-              placeholder="Ajouter des mots : grenouille, papillon..."
-              className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none"
-              rows={2}
-            />
-            <button
-              onClick={handleAddWords}
-              disabled={adding || !wordInput.trim()}
-              className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm self-start"
-            >
-              {adding ? "⏳" : "+ Ajouter"}
-            </button>
-          </div>
-        </div>
+        <h2 className="text-lg font-bold text-gray-900">📚 Mes mots ({words.length})</h2>
 
         {/* Filtres */}
         <div className="flex gap-2 flex-wrap">
@@ -511,7 +585,7 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Tableau des mots */}
+        {/* Liste */}
         {wordsLoading ? (
           <div className="space-y-2">
             {[...Array(5)].map((_, i) => <div key={i} className="bg-white rounded-xl h-12 animate-pulse" />)}
@@ -519,16 +593,17 @@ export default function DashboardPage() {
         ) : filteredWords.length === 0 ? (
           <div className="text-center py-12 text-gray-400 bg-white rounded-2xl border border-gray-100">
             <div className="text-4xl mb-2">📭</div>
-            <p className="font-medium">
-              {words.length === 0 ? "Aucun mot pour l'instant." : "Aucun mot dans cette catégorie."}
+            <p className="font-medium text-sm">
+              {words.length === 0
+                ? "Aucun mot pour l'instant. Abonnez-vous à une liste ci-dessus."
+                : "Aucun mot dans cette catégorie."}
             </p>
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="hidden sm:flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 text-xs font-medium text-gray-400">
               <span className="flex-1">Mot</span>
-              <span className="hidden md:block w-32">Origine</span>
-              <span className="w-24 text-center">Niveau <span className="font-normal opacity-70">(cliquable)</span></span>
+              <span className="w-24 text-center">Niveau</span>
               <span className="w-14 text-right">Réussite</span>
               <span className="w-10" />
             </div>
@@ -536,7 +611,6 @@ export default function DashboardPage() {
               <AnimatePresence initial={false}>
                 {filteredWords.map((word) => {
                   const isPending = pendingDeleteId === word.id;
-                  const origin = originLabel(word);
                   return (
                     <motion.li
                       key={word.id}
@@ -551,9 +625,6 @@ export default function DashboardPage() {
                       <span className="flex-1 font-semibold text-gray-800 capitalize text-sm truncate min-w-0">
                         {word.text}
                       </span>
-                      <span className="hidden md:block w-32 shrink-0 text-xs text-gray-500 truncate" title={origin.title}>
-                        {origin.text}
-                      </span>
                       <button
                         onClick={() => handleLevelChange(word.id, word.level)}
                         title="Cliquer pour changer le niveau"
@@ -564,7 +635,7 @@ export default function DashboardPage() {
                       <button
                         onClick={() => handleLevelChange(word.id, word.level)}
                         className="sm:hidden text-base shrink-0 active:scale-90 transition"
-                        title={`Niveau: ${displayLevel(word.level).label} — cliquer pour changer`}
+                        title={`Niveau: ${displayLevel(word.level).label}`}
                       >
                         {displayLevel(word.level).emoji}
                       </button>
@@ -601,160 +672,11 @@ export default function DashboardPage() {
           </div>
         )}
         {words.length > 0 && (
-          <p className="text-xs text-gray-400 text-center">
-            Cliquer sur le badge de niveau pour le modifier manuellement
-          </p>
+          <p className="text-xs text-gray-400 text-center">Cliquer sur le badge de niveau pour le modifier</p>
         )}
-        <div className="text-center pt-2">
-          <button
-            onClick={() => setShowOwnLists(v => !v)}
-            className="text-sm text-purple-600 hover:text-purple-700 underline"
-          >
-            {showOwnLists ? "Masquer" : "📋 Mes listes à partager"}
-          </button>
-        </div>
       </motion.section>
 
-      {/* Section "Listes partagées" supprimée — remplacée par la section "Mes listes dynamiques" au-dessus */}
-
-      {/* ══════════════════════════════════════════════════
-          4. MES LISTES (conditionnel)
-      ══════════════════════════════════════════════════ */}
-      {showOwnLists && (
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="space-y-4"
-      >
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-lg font-bold text-gray-900">
-            📋 Mes listes ({myLists.length})
-          </h2>
-          <button
-            onClick={() => setShowNewListForm((v) => !v)}
-            className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition shadow-sm text-sm"
-          >
-            + Nouvelle liste
-          </button>
-        </div>
-
-        {/* Formulaire nouvelle liste */}
-        <AnimatePresence>
-          {showNewListForm && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="bg-white rounded-2xl border border-purple-100 shadow-sm p-5 space-y-4">
-                <h3 className="font-semibold text-gray-800">Nouvelle liste</h3>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nom <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    autoFocus
-                    type="text"
-                    value={newListName}
-                    onChange={(e) => setNewListName(e.target.value)}
-                    maxLength={60}
-                    placeholder="Ex : Mots CE2 difficiles"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
-                    onKeyDown={(e) => { if (e.key === "Enter" && e.metaKey) handleCreateList(); }}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Mots initiaux <span className="text-gray-400">(optionnel)</span>
-                  </label>
-                  <textarea
-                    value={newListWords}
-                    onChange={(e) => setNewListWords(e.target.value)}
-                    placeholder="grenouille, papillon, anniversaire..."
-                    rows={2}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none"
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleCreateList}
-                    disabled={creatingList || !newListName.trim()}
-                    className="px-5 py-2 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm"
-                  >
-                    {creatingList ? "Création…" : "Créer"}
-                  </button>
-                  <button
-                    onClick={() => { setShowNewListForm(false); setNewListName(""); setNewListWords(""); }}
-                    className="px-5 py-2 text-gray-600 font-medium rounded-xl hover:bg-gray-100 transition text-sm"
-                  >
-                    Annuler
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Cards de mes listes */}
-        {listsLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl h-28 animate-pulse" />
-            ))}
-          </div>
-        ) : myLists.length === 0 ? (
-          <div className="text-center py-10 text-gray-400 bg-white rounded-2xl border border-gray-100">
-            <div className="text-4xl mb-2">📋</div>
-            <p className="font-medium text-sm">Tu n'as pas encore de liste.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <AnimatePresence>
-              {myLists.map((list) => (
-                <motion.div
-                  key={list.id}
-                  layout
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition"
-                >
-                  <div className="font-semibold text-gray-800 truncate mb-2">{list.name}</div>
-                  <div className="flex items-center gap-3 text-xs text-gray-500 mb-4">
-                    <span>📝 {list.itemCount} mot{list.itemCount !== 1 ? "s" : ""}</span>
-                    {list.copyCount > 0 && (
-                      <span className="text-purple-600">📋 {list.copyCount} copie{list.copyCount !== 1 ? "s" : ""}</span>
-                    )}
-                    {list.isPublic && <span className="text-green-600">🌐 Publique</span>}
-                  </div>
-                  <div className="flex gap-2">
-                    <Link
-                      href={`/listes/${list.id}`}
-                      className="flex-1 text-center py-1.5 text-sm font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-xl transition"
-                    >
-                      Gérer
-                    </Link>
-                    <button
-                      onClick={() => setShareModal({ id: list.id, slug: list.slug, name: list.name, isPublic: list.isPublic })}
-                      className="flex-1 text-center py-1.5 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-xl transition"
-                    >
-                      🔗 Partager
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        )}
-
-      </motion.section>
-      )}
-
-      {/* ══════════════════════════════════════════════════
-          MODAL PARTAGE
-      ══════════════════════════════════════════════════ */}
+      {/* ══ MODAL PARTAGE ══ */}
       {shareModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <motion.div
@@ -769,42 +691,12 @@ export default function DashboardPage() {
             </div>
             <div className="flex flex-col gap-2">
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(`https://www.dictou.com/liste/${shareModal.slug}`);
-                  toast.success("Lien copié !");
-                }}
+                onClick={() => { copyListLink(shareModal.slug); setShareModal(null); }}
                 className="w-full py-2.5 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition text-sm"
               >
                 📋 Copier le lien
               </button>
-              {shareModal.isPublic ? (
-                <p className="text-center text-sm text-green-600 font-medium">✅ Liste publique — accessible à tous</p>
-              ) : (
-                <button
-                  onClick={async () => {
-                    try {
-                      const r = await fetch(`/api/lists/${shareModal.id}`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ isPublic: true }),
-                      });
-                      if (!r.ok) throw new Error();
-                      setShareModal(prev => prev ? { ...prev, isPublic: true } : null);
-                      setMyLists(prev => prev.map(l => l.id === shareModal.id ? { ...l, isPublic: true } : l));
-                      toast.success("Liste rendue publique !");
-                    } catch {
-                      toast.error("Erreur lors de la mise à jour");
-                    }
-                  }}
-                  className="w-full py-2.5 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition text-sm"
-                >
-                  🌐 Rendre publique et partager
-                </button>
-              )}
-              <button
-                onClick={() => setShareModal(null)}
-                className="w-full py-2 text-gray-500 hover:text-gray-700 text-sm transition"
-              >
+              <button onClick={() => setShareModal(null)} className="w-full py-2 text-gray-500 hover:text-gray-700 text-sm transition">
                 Fermer
               </button>
             </div>
