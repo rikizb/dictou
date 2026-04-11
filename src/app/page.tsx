@@ -117,12 +117,14 @@ export default function LandingPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left mb-10">
               {[
-                { num: "1", emoji: "📝", title: "Créez votre liste", desc: "Ajoutez les mots de la semaine en quelques secondes" },
-                { num: "2", emoji: "🔗", title: "Partagez le lien", desc: "WhatsApp, SMS, email — un lien unique pour toute la classe" },
-                { num: "3", emoji: "🎯", title: "Vos élèves s'entrainent", desc: "L'IA génère des phrases sur-mesure. Chaque enfant progresse à son rythme." },
+                { num: "1", img: "/creer.png", w: 316, h: 278, title: "Créez votre liste", desc: "Ajoutez les mots de la semaine en quelques secondes" },
+                { num: "2", img: "/partagez.png", w: 351, h: 287, title: "Partagez le lien", desc: "WhatsApp, SMS, email — un lien unique pour toute la classe" },
+                { num: "3", img: "/eleves.png", w: 350, h: 297, title: "Vos élèves s'entrainent", desc: "L'IA génère des phrases sur-mesure. Chaque enfant progresse à son rythme." },
               ].map((s) => (
                 <div key={s.num} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-                  <div className="text-2xl mb-2">{s.emoji}</div>
+                  <div className="flex justify-center mb-3">
+                    <Image src={s.img} alt={s.title} width={s.w} height={s.h} className="h-16 w-auto" />
+                  </div>
                   <p className="font-semibold text-gray-800 text-sm mb-1">{s.title}</p>
                   <p className="text-xs text-gray-500">{s.desc}</p>
                 </div>

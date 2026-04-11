@@ -69,7 +69,8 @@
       "Bash(curl -sI -L https://www.dictou.com/dashboard)",
       "Bash(curl -sI https://clerk.dictou.com)",
       "Bash(curl -sI https://accounts.dictou.com)",
-      "Bash(python3 -c \" import sys, json for line in sys.stdin: line = line.strip\\(\\) if not line: continue try: obj = json.loads\\(line\\) msg = obj.get\\('message', {}\\) if msg.get\\('role'\\) == 'assistant' and msg.get\\('stop_reason'\\) == 'end_turn': for c in msg.get\\('content', []\\): if c.get\\('type'\\) == 'text': print\\(c['text']\\) except: pass \")"
+      "Bash(python3 -c \" import sys, json for line in sys.stdin: line = line.strip\\(\\) if not line: continue try: obj = json.loads\\(line\\) msg = obj.get\\('message', {}\\) if msg.get\\('role'\\) == 'assistant' and msg.get\\('stop_reason'\\) == 'end_turn': for c in msg.get\\('content', []\\): if c.get\\('type'\\) == 'text': print\\(c['text']\\) except: pass \")",
+      "Bash(node -e ':*)"
     ]
   }
 }

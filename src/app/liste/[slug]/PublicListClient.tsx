@@ -26,6 +26,8 @@ export default function PublicListClient({ list }: { list: PublicListData }) {
     try {
       const words = list.items.map((i) => ({ text: i.word }));
       localStorage.setItem(GUEST_WORDS_KEY, JSON.stringify(words));
+      // Mémoriser la liste pour s'y abonner automatiquement si l'utilisateur crée un compte ensuite
+      localStorage.setItem("dictou_pending_join", list.slug);
     } catch {
       // ignore si localStorage indisponible
     }
@@ -83,7 +85,7 @@ export default function PublicListClient({ list }: { list: PublicListData }) {
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sm:p-8">
             {/* Badge liste */}
             <div className="inline-flex items-center gap-1.5 bg-purple-50 text-purple-600 text-xs font-semibold px-3 py-1 rounded-full mb-4">
-              📋 Liste de dictée
+              📋 Liste de dictée partagée
             </div>
 
             {/* Titre */}
@@ -91,7 +93,7 @@ export default function PublicListClient({ list }: { list: PublicListData }) {
               {list.name}
             </h1>
             <p className="text-gray-400 text-sm mb-6">
-              {list.items.length} mot{list.items.length !== 1 ? "s" : ""}
+              {list.items.length} mot{list.items.length !== 1 ? "s" : ""} à travailler
               {list.copyCount > 0 && (
                 <span className="ml-2">
                   · {list.copyCount} élève{list.copyCount > 1 ? "s" : ""} s'entraîne{list.copyCount > 1 ? "nt" : ""}
@@ -119,12 +121,12 @@ export default function PublicListClient({ list }: { list: PublicListData }) {
             <button
               onClick={handlePracticeNow}
               disabled={list.items.length === 0}
-              className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-purple-600 text-white font-bold text-lg rounded-2xl hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-md hover:shadow-lg mb-3"
+              className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-purple-600 text-white font-bold text-lg rounded-2xl hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-md hover:shadow-lg mb-2"
             >
               🎯 S'entraîner maintenant
             </button>
             <p className="text-center text-xs text-gray-400 mb-5">
-              Aucun compte nécessaire
+              Sans compte · Commencer tout de suite
             </p>
 
             {/* Séparateur */}
@@ -149,11 +151,11 @@ export default function PublicListClient({ list }: { list: PublicListData }) {
                 ? subscribing
                   ? "Ajout en cours…"
                   : "Ajouter à mon compte"
-                : "Créer un compte pour sauvegarder ma progression"}
+                : "Créer un compte — suivre les progrès"}
             </button>
             {!user && isLoaded && (
               <p className="text-center text-gray-400 text-xs mt-2">
-                Gratuit — moins d'une minute
+                Gratuit · Moins d'une minute
               </p>
             )}
           </div>

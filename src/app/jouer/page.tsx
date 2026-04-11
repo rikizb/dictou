@@ -415,12 +415,19 @@ export default function JouerPage() {
           <span>Dictou</span>
         </Link>
         {totalDone >= 1 && (
-          <Link
-            href="/sign-up?redirect_url=/dashboard"
+          <button
+            onClick={() => {
+              // Sauvegarder l'état de la session avant de rediriger (même en mode démo)
+              try {
+                localStorage.setItem(GUEST_WORDS_KEY, JSON.stringify(guestWords));
+                localStorage.setItem(LEVEL_KEY, level);
+              } catch { /* ignore */ }
+              window.location.href = "/sign-up?redirect_url=/dashboard";
+            }}
             className="px-4 py-2 bg-purple-600 text-white text-sm font-semibold rounded-xl hover:bg-purple-700 transition shadow-sm"
           >
             Créer un compte →
-          </Link>
+          </button>
         )}
       </header>
 

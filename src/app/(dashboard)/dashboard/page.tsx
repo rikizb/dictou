@@ -522,16 +522,16 @@ export default function DashboardPage() {
                   </div>
                   <Link
                     href={`/listes/${list.id}`}
-                    className="shrink-0 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition"
+                    className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition"
                   >
-                    Modifier
+                    ✏️<span className="hidden sm:inline"> Modifier</span>
                   </Link>
                   <button
                     onClick={() => copyListLink(list.slug)}
                     title="Copier le lien de partage"
-                    className="shrink-0 px-3 py-1.5 text-xs font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition"
+                    className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition"
                   >
-                    🔗 Lien
+                    🔗<span className="hidden sm:inline"> Partager</span>
                   </button>
                 </div>
               ))
@@ -552,15 +552,15 @@ export default function DashboardPage() {
                   <p className="font-semibold text-gray-800 text-sm truncate">{sub.list.name}</p>
                   <p className="text-xs text-gray-400">{sub.list.itemCount} mot{sub.list.itemCount !== 1 ? "s" : ""}</p>
                 </div>
-                <span className="shrink-0 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-lg">
+                <span className="hidden sm:inline-flex shrink-0 items-center text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-lg">
                   Abonné ✓
                 </span>
                 <button
                   onClick={() => copyListLink(sub.list.slug)}
                   title="Copier le lien"
-                  className="shrink-0 px-3 py-1.5 text-xs font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition"
+                  className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition"
                 >
-                  🔗 Lien
+                  🔗<span className="hidden sm:inline"> Lien</span>
                 </button>
                 <button
                   onClick={() => handleUnsubscribe(sub.listId, sub.list.name)}
